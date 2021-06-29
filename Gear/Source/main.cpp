@@ -1,0 +1,8 @@
+#include "MallocBase.h"
+
+int main()
+{
+
+
+	return 0;
+}
