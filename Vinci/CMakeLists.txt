@@ -46,6 +46,15 @@ endif(CMAKE_SIZEOF_VOID_P)
 add_executable(Vinci "${srcs}")
 target_link_libraries(Vinci "${libs}")
 
+# Add custom command to copy data needed
+add_custom_command(
+    TARTGET Vinci
+    POST_BUILD
+    COMMAND if not exist "$(OutDir)renderdoc.dll"
+    copy /Y
+    "$(OutDir)..\\..\\ThirdParty\\RenderDoc\\renderdoc.dll"
+    "$(OutDir)")
+
 # working directories
 set_target_properties(Vinci PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/Assets")
 set_target_properties(Vinci PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
