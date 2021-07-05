@@ -28,7 +28,9 @@ include_directories("$ENV{VULKAN_SDK}/Include/")
 include_directories("ThirdParty/glfw-3.3.4/include/")
 
 # add referenced library		 		 
-set(libs glfw3.lib)
+set(libs 
+	glfw3.lib
+	vulkan-1.lib)
 
 # source files
 set(srcs
@@ -41,6 +43,7 @@ else(CMAKE_SIZEOF_VOID_P)
 endif(CMAKE_SIZEOF_VOID_P)	 
 
 link_directories("${thirdPartyPath}/glfw-3.3.4/Lib/")
+link_directories("$ENV{VULKAN_SDK}/Lib/")
 
 add_executable(Vinci "${srcs}")
 target_link_libraries(Vinci "${libs}")
