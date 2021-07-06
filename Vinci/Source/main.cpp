@@ -11,7 +11,7 @@ const uint32_t HEIGHT = 600;
 const char* APPNAME = "VINCI";
 
 #ifdef _DEBUG
-const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_RENDERDOC_Capture" };
+const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 
 bool checkValidationLayerSupport()
 {
