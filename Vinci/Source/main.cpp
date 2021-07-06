@@ -4,11 +4,44 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <vector>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
-
 const char* APPNAME = "VINCI";
+
+#ifdef _DEBUG
+// Used validation layer from LunarG
+const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_RENDERDOC_Capture" };
+
+bool checkValidationLayerSupport()
+{
+	uint32_t layerCount = 0;
+	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+	std::vector<VkLayerProperties> layerAvailable(layerCount);
+	vkEnumerateInstanceLayerProperties(&layerCount, layerAvailable.data());
+
+	for (const char* layer: VALIDATION_LAYERS)
+	{
+		bool ret = false;
+		for (const VkLayerProperties& availableLayer : layerAvailable)
+		{
+			if (strcmp(layer, availableLayer.layerName) == 0)
+			{
+				ret = true;
+				break;
+			}
+		}
+
+		if (!ret)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+#endif
 
 class HelloTriangleApplication {
 public:
@@ -74,6 +107,13 @@ int main() {
 
 void HelloTriangleApplication::createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions)
 {
+#ifdef _DEBUG
+	// Check validation layer
+	if (!checkValidationLayerSupport())
+	{
+		throw std::runtime_error("validation layers required, while no available layer exists.");
+	}
+#endif
 	VkApplicationInfo appInfo{};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = APPNAME;
@@ -85,11 +125,14 @@ void HelloTriangleApplication::createVulkanInstance(const uint32_t& glfwExtCount
 	VkInstanceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
-
 	createInfo.enabledExtensionCount = glfwExtCount;
 	createInfo.ppEnabledExtensionNames = glfwExtensions;
-
+#ifdef _DEBUG
+	createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
+	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
+#else
 	createInfo.enabledLayerCount = 0;
+#endif
 
 	if (vkCreateInstance(&createInfo, nullptr, &vulkanInstance) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create instance!");
