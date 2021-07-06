@@ -73,7 +73,7 @@ std::vector<const char*> getRequiredExts(const uint32_t& glfwExtCount, const cha
 {
 	std::vector<const char*> extensions(glfwExtensions, glfwExtensions+ glfwExtCount);
 
-	extensions.push_back("VK_EXT_DEBUG_UTILS_EXTENSION_NAME");
+	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 	return extensions;
 }
