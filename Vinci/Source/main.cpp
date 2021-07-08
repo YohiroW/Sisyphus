@@ -11,6 +11,10 @@ const uint32_t HEIGHT = 600;
 const char* APPNAME = "VINCI";
 
 #ifdef _DEBUG
+/// Validation Layer should be abstracted, but leave it here for learning usage
+/// We can learn how to make validation configuration by vk_layer_settings.txt
+/// Currently use default setting in this solution. 
+ 
 const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 
 bool checkValidationLayerSupport()
@@ -167,8 +171,9 @@ private:
 		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
 
 		createVulkanInstance(glfwExtCount, glfwExtensions);
-
+#ifdef _DEBUG
 		SetupDebugInfo();
+#endif
 	}
 
 	void mainLoop() 
