@@ -58,5 +58,5 @@ target_link_libraries(Vinci "${libs}")
     # "$(OutDir)")
 
 # working directories
-# set_target_properties(Vinci PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/Assets")
+set_target_properties(Vinci PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/Assets")
 # set_target_properties(Vinci PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
