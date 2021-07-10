@@ -94,6 +94,53 @@ public:
 protected:
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
 
+	/// Device validation
+	void enumPhysicalDevice()
+	{
+		VkPhysicalDevice phyDevice = VK_NULL_HANDLE;
+		uint32_t deviceCount = 0;
+		
+		vkEnumeratePhysicalDevices(vulkanInstance, &deviceCount, nullptr);
+
+		if (deviceCount == 0)
+		{
+			throw std::runtime_error("No vulkan device found.");
+		}
+
+		std::vector<VkPhysicalDevice> deviceList(deviceCount);
+		vkEnumeratePhysicalDevices(vulkanInstance, &deviceCount, deviceList.data());
+
+		for (const VkPhysicalDevice& pendingDevice: deviceList)
+		{
+			// Select first device at the moment
+			if (isDeviceSupported(pendingDevice))
+			{
+				phyDevice = pendingDevice;
+				break;
+			}			
+		}
+
+		if (phyDevice == VK_NULL_HANDLE)
+		{
+			throw std::runtime_error("No vulkan device found.");
+		}
+	}
+
+	bool isDeviceSupported(VkPhysicalDevice device)
+	{
+		VkPhysicalDeviceProperties deviceProperty;
+		vkGetPhysicalDeviceProperties(device, &deviceProperty);
+
+		VkPhysicalDeviceFeatures deviceFeature;
+		vkGetPhysicalDeviceFeatures(device, &deviceFeature);
+
+		return deviceProperty.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+	}
+
+	/// Finish device validation
+
+
+
 #ifdef _DEBUG
 	// SEVERITY
 	// used for diagnostic 
@@ -171,6 +218,7 @@ private:
 		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
 
 		createVulkanInstance(glfwExtCount, glfwExtensions);
+		enumPhysicalDevice();
 #ifdef _DEBUG
 		SetupDebugInfo();
 #endif
