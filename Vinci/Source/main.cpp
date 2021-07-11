@@ -136,7 +136,6 @@ protected:
 	/// Device validation
 	void enumPhysicalDevice()
 	{
-		VkPhysicalDevice phyDevice = VK_NULL_HANDLE;
 		uint32_t deviceCount = 0;
 		
 		vkEnumeratePhysicalDevices(vulkanInstance, &deviceCount, nullptr);
@@ -154,12 +153,12 @@ protected:
 			// Select first device at the moment
 			if (isDeviceSupported(pendingDevice))
 			{
-				phyDevice = pendingDevice;
+				physicalDevice = pendingDevice;
 				break;
 			}			
 		}
 
-		if (phyDevice == VK_NULL_HANDLE)
+		if (physicalDevice == VK_NULL_HANDLE)
 		{
 			throw std::runtime_error("No vulkan device found.");
 		}
@@ -180,6 +179,40 @@ protected:
 
 	/// Finish device validation
 
+	void createLogicalDevice()
+	{
+		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+		VkDeviceQueueCreateInfo queueCreateInfo = {};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
+		queueCreateInfo.queueCount = 1;
+
+		float queuePriority = 1.0;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+
+		VkPhysicalDeviceFeatures deviceFeature = {};
+
+		VkDeviceCreateInfo createInfo = {};
+
+		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		createInfo.pQueueCreateInfos = &queueCreateInfo;
+		createInfo.queueCreateInfoCount = 1;
+		createInfo.pEnabledFeatures = &deviceFeature;
+		createInfo.enabledExtensionCount = 0;
+
+#ifdef _DEBUG
+		createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
+		createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
+#else
+		createInfo.enabledLayerCount = 0£»
+#endif
+		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create logical device.");
+		}
+	}
+	
 
 
 #ifdef _DEBUG
@@ -236,6 +269,8 @@ protected:
 private:
 	GLFWwindow* window;
 	VkInstance vulkanInstance;
+	VkPhysicalDevice physicalDevice { VK_NULL_HANDLE };
+	VkDevice device;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -260,6 +295,7 @@ private:
 
 		createVulkanInstance(glfwExtCount, glfwExtensions);
 		enumPhysicalDevice();
+		createLogicalDevice();
 #ifdef _DEBUG
 		SetupDebugInfo();
 #endif
@@ -279,6 +315,8 @@ private:
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
 		vkDestroyInstance(vulkanInstance, nullptr);
+
+		vkDestroyDevice(device, nullptr);
 
 		glfwDestroyWindow(window);
 
