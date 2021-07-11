@@ -17,6 +17,16 @@ const char* APPNAME = "VINCI";
  
 const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 
+struct QueueFamilyIndices
+{
+	int graphicsFamily = -1;
+
+	bool IsComplete()
+	{
+		return graphicsFamily > 0;
+	}
+};
+
 bool checkValidationLayerSupport()
 {
 	uint32_t layerCount = 0;
@@ -94,6 +104,35 @@ public:
 protected:
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
 
+	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device)
+	{
+		QueueFamilyIndices indices;
+
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+		int i = 0;
+		for (const VkQueueFamilyProperties& queueFamily: queueFamilies)
+		{
+			if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			{
+				indices.graphicsFamily = i;
+			}
+
+			if (indices.IsComplete())
+			{
+				break;
+			}
+
+			++i;
+		}
+
+		return indices;
+	}
+
 	/// Device validation
 	void enumPhysicalDevice()
 	{
@@ -133,6 +172,8 @@ protected:
 
 		VkPhysicalDeviceFeatures deviceFeature;
 		vkGetPhysicalDeviceFeatures(device, &deviceFeature);
+
+		QueueFamilyIndices indices = findQueueFamilies(device);
 
 		return deviceProperty.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	}
