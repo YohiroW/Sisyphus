@@ -211,6 +211,9 @@ protected:
 		{
 			throw std::runtime_error("Failed to create logical device.");
 		}
+
+		
+		vkGetDeviceQueue(device, indices.graphicsFamily, 0, &graphicsQueue);
 	}
 	
 
@@ -271,6 +274,7 @@ private:
 	VkInstance vulkanInstance;
 	VkPhysicalDevice physicalDevice { VK_NULL_HANDLE };
 	VkDevice device;
+	VkQueue graphicsQueue;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
