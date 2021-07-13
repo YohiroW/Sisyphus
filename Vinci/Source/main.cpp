@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <vector>
+#include <set>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -20,10 +21,11 @@ const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validatio
 struct QueueFamilyIndices
 {
 	int graphicsFamily = -1;
+	int presentFamily = -1;
 
 	bool IsComplete()
 	{
-		return graphicsFamily > 0;
+		return graphicsFamily > 0 && presentFamily > 0;
 	}
 };
 
@@ -102,7 +104,15 @@ public:
 	}
 
 protected:
+	// Refactor later
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
+	
+	void createSurface()
+	{
+		if (glfwCreateWindowSurface(vulkanInstance, window, nullptr, &surface) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create window surface!");
+		}
+	}
 
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device)
 	{
@@ -117,6 +127,14 @@ protected:
 		int i = 0;
 		for (const VkQueueFamilyProperties& queueFamily: queueFamilies)
 		{
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+			
+			if (presentSupport)
+			{
+				indices.presentFamily = i;
+			}
+
 			if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 			{
 				indices.graphicsFamily = i;
@@ -183,23 +201,31 @@ protected:
 	{
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-		VkDeviceQueueCreateInfo queueCreateInfo = {};
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
-		queueCreateInfo.queueCount = 1;
+		// 
+		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+		std::set<int> uniqueQueueFamilies = { indices.graphicsFamily, indices.presentFamily };
 
-		float queuePriority = 1.0;
-		queueCreateInfo.pQueuePriorities = &queuePriority;
+		float queuePriority = 1.0f;
+		for (int queueFamily : uniqueQueueFamilies)
+		{
+			VkDeviceQueueCreateInfo queueCreateInfo = {};
+			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queueCreateInfo.queueFamilyIndex = queueFamily;
+			queueCreateInfo.queueCount = 1;
+			queueCreateInfo.pQueuePriorities = &queuePriority;
+
+			queueCreateInfos.push_back(queueCreateInfo);
+		}
 
 		VkPhysicalDeviceFeatures deviceFeature = {};
 
 		VkDeviceCreateInfo createInfo = {};
-
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		createInfo.pQueueCreateInfos = &queueCreateInfo;
-		createInfo.queueCreateInfoCount = 1;
 		createInfo.pEnabledFeatures = &deviceFeature;
 		createInfo.enabledExtensionCount = 0;
+
+		createInfo.pQueueCreateInfos = queueCreateInfos.data();
+		createInfo.queueCreateInfoCount = queueCreateInfos.size();
 
 #ifdef _DEBUG
 		createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
@@ -214,9 +240,9 @@ protected:
 
 		
 		vkGetDeviceQueue(device, indices.graphicsFamily, 0, &graphicsQueue);
+		vkGetDeviceQueue(device, indices.presentFamily, 0, &presentQueue);
 	}
 	
-
 
 #ifdef _DEBUG
 	// SEVERITY
@@ -272,9 +298,13 @@ protected:
 private:
 	GLFWwindow* window;
 	VkInstance vulkanInstance;
+	VkSurfaceKHR surface;
+
 	VkPhysicalDevice physicalDevice { VK_NULL_HANDLE };
 	VkDevice device;
+
 	VkQueue graphicsQueue;
+	VkQueue presentQueue;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -298,6 +328,7 @@ private:
 		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtCount);
 
 		createVulkanInstance(glfwExtCount, glfwExtensions);
+		createSurface();
 		enumPhysicalDevice();
 		createLogicalDevice();
 #ifdef _DEBUG
@@ -305,9 +336,9 @@ private:
 #endif
 	}
 
-	void mainLoop() 
+	void mainLoop()
 	{
-		while (!glfwWindowShouldClose(window)) 
+		while (!glfwWindowShouldClose(window))
 		{
 			glfwPollEvents();
 		}
@@ -318,9 +349,9 @@ private:
 #ifdef _DEBUG
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
-		vkDestroyInstance(vulkanInstance, nullptr);
-
+		vkDestroySurfaceKHR(vulkanInstance, surface, nullptr);
 		vkDestroyDevice(device, nullptr);
+		vkDestroyInstance(vulkanInstance, nullptr);
 
 		glfwDestroyWindow(window);
 
