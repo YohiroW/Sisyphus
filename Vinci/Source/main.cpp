@@ -17,6 +17,7 @@ const char* APPNAME = "VINCI";
 /// Currently use default setting in this solution. 
  
 const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
+const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 struct QueueFamilyIndices
 {
@@ -27,6 +28,13 @@ struct QueueFamilyIndices
 	{
 		return graphicsFamily > 0 && presentFamily > 0;
 	}
+};
+
+struct SwapChainSupportDetail
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentModes;
 };
 
 bool checkValidationLayerSupport()
@@ -182,6 +190,25 @@ protected:
 		}
 	}
 
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device)
+	{
+		// enumerate device extension list
+		uint32_t extensionCount;
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+		std::set<std::string> requiredExtensions(DEVICE_EXTENSIONS.begin(), DEVICE_EXTENSIONS.end());
+
+		// swap chain extension check
+		for (const auto& ext: availableExtensions)
+		{
+			requiredExtensions.erase(ext.extensionName);
+		}
+
+		return requiredExtensions.empty();
+	}
+
 	bool isDeviceSupported(VkPhysicalDevice device)
 	{
 		VkPhysicalDeviceProperties deviceProperty;
@@ -191,8 +218,15 @@ protected:
 		vkGetPhysicalDeviceFeatures(device, &deviceFeature);
 
 		QueueFamilyIndices indices = findQueueFamilies(device);
+		bool extSupport = checkDeviceExtensionSupport(device);
+		bool swapChainAdequate = false;
+		if (extSupport)
+		{
+			SwapChainSupportDetail swapChainSupport = querySwapChainSupport(device);
+			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+		}
 
-		return deviceProperty.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+		return indices.IsComplete() && extSupport && swapChainAdequate;
 	}
 
 	/// Finish device validation
@@ -241,6 +275,30 @@ protected:
 		
 		vkGetDeviceQueue(device, indices.graphicsFamily, 0, &graphicsQueue);
 		vkGetDeviceQueue(device, indices.presentFamily, 0, &presentQueue);
+	}
+
+	SwapChainSupportDetail querySwapChainSupport(VkPhysicalDevice device)
+	{
+		SwapChainSupportDetail details;
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+		uint32_t formatCount;
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+		if (formatCount)
+		{
+			details.formats.resize(formatCount);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+		}
+
+		uint32_t presentModeCount;
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+		if (presentModeCount)
+		{
+			details.presentModes.resize(presentModeCount);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+		}
+
+		return details;
 	}
 	
 
@@ -398,8 +456,10 @@ void HelloTriangleApplication::createVulkanInstance(const uint32_t& glfwExtCount
 	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
 
 	auto extensions = getRequiredExts(glfwExtCount, glfwExtensions);
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-	createInfo.ppEnabledExtensionNames = extensions.data();
+
+	// enabled device extension
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(DEVICE_EXTENSIONS.size());
+	createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data();
 
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
 	{
