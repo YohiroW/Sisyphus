@@ -136,17 +136,17 @@ protected:
 		int i = 0;
 		for (const VkQueueFamilyProperties& queueFamily: queueFamilies)
 		{
+			if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+			{ 
+				indices.graphicsFamily = i;
+			}
+
 			VkBool32 presentSupport = false;
 			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-			
+
 			if (presentSupport)
 			{
 				indices.presentFamily = i;
-			}
-
-			if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			{
-				indices.graphicsFamily = i;
 			}
 
 			if (indices.IsComplete())
@@ -527,8 +527,8 @@ void HelloTriangleApplication::createVulkanInstance(const uint32_t& glfwExtCount
 	auto extensions = getRequiredExts(glfwExtCount, glfwExtensions);
 
 	// enabled device extension
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(DEVICE_EXTENSIONS.size());
-	createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data();
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+	createInfo.ppEnabledExtensionNames = extensions.data();
 
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
 	{
