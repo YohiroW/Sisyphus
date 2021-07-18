@@ -15,7 +15,7 @@ const char* APPNAME = "VINCI";
 /// Validation Layer should be abstracted, but leave it here for learning usage
 /// We can learn how to make validation configuration by vk_layer_settings.txt
 /// Currently use default setting in this solution. 
- 
+
 const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
@@ -26,7 +26,7 @@ struct QueueFamilyIndices
 
 	bool IsComplete()
 	{
-		return graphicsFamily > 0 && presentFamily > 0;
+		return graphicsFamily >= 0 && presentFamily >= 0;
 	}
 };
 
@@ -45,7 +45,7 @@ bool checkValidationLayerSupport()
 	std::vector<VkLayerProperties> layerAvailable(layerCount);
 	vkEnumerateInstanceLayerProperties(&layerCount, layerAvailable.data());
 
-	for (const char* layer: VALIDATION_LAYERS)
+	for (const char* layer : VALIDATION_LAYERS)
 	{
 		bool ret = false;
 		for (const VkLayerProperties& availableLayer : layerAvailable)
@@ -66,27 +66,27 @@ bool checkValidationLayerSupport()
 }
 
 VkResult createDebugUtilsMessengerEXT(VkInstance instance,
-	                                  const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-	                                  const VkAllocationCallbacks* pAllocator,
-	                                  VkDebugUtilsMessengerEXT* pCallback)
+	const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+	const VkAllocationCallbacks* pAllocator,
+	VkDebugUtilsMessengerEXT* pCallback)
 {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr) 
+	if (func != nullptr)
 	{
 		return func(instance, pCreateInfo, pAllocator, pCallback);
 	}
-	else 
+	else
 	{
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
 }
 
-void destroyDebugUtilsMessengerEXT(VkInstance instance, 
-                                   VkDebugUtilsMessengerEXT debugMessenger,
-                                   const VkAllocationCallbacks* pAllocator) 
+void destroyDebugUtilsMessengerEXT(VkInstance instance,
+	VkDebugUtilsMessengerEXT debugMessenger,
+	const VkAllocationCallbacks* pAllocator)
 {
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) 
+	if (func != nullptr)
 	{
 		func(instance, debugMessenger, pAllocator);
 	}
@@ -95,7 +95,7 @@ void destroyDebugUtilsMessengerEXT(VkInstance instance,
 
 std::vector<const char*> getRequiredExts(const uint32_t& glfwExtCount, const char** glfwExtensions)
 {
-	std::vector<const char*> extensions(glfwExtensions, glfwExtensions+ glfwExtCount);
+	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtCount);
 
 	extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
@@ -115,7 +115,7 @@ protected:
 	// Refactor later
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
 	void createSwapChain();
-	
+
 	void createSurface()
 	{
 		if (glfwCreateWindowSurface(vulkanInstance, window, nullptr, &surface) != VK_SUCCESS) {
@@ -134,10 +134,10 @@ protected:
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
 		int i = 0;
-		for (const VkQueueFamilyProperties& queueFamily: queueFamilies)
+		for (const VkQueueFamilyProperties& queueFamily : queueFamilies)
 		{
 			if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
-			{ 
+			{
 				indices.graphicsFamily = i;
 			}
 
@@ -171,7 +171,7 @@ protected:
 			return { VK_FORMAT_B8G8R8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
 		}
 
-		for (const auto& format: availableFormats)
+		for (const auto& format : availableFormats)
 		{
 			if (format.format == VK_FORMAT_B8G8R8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 			{
@@ -187,7 +187,7 @@ protected:
 	{
 		VkPresentModeKHR selectedMode = VK_PRESENT_MODE_FIFO_KHR;
 		// 
-		for (const VkPresentModeKHR& presentMode: availablePresentModes)
+		for (const VkPresentModeKHR& presentMode : availablePresentModes)
 		{
 			if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
 			{
@@ -224,30 +224,29 @@ protected:
 	void enumPhysicalDevice()
 	{
 		uint32_t deviceCount = 0;
-		
 		vkEnumeratePhysicalDevices(vulkanInstance, &deviceCount, nullptr);
 
 		if (deviceCount == 0)
 		{
-			throw std::runtime_error("No vulkan device found.");
+			throw std::runtime_error("No physical vulkan device found.");
 		}
 
 		std::vector<VkPhysicalDevice> deviceList(deviceCount);
 		vkEnumeratePhysicalDevices(vulkanInstance, &deviceCount, deviceList.data());
 
-		for (const VkPhysicalDevice& pendingDevice: deviceList)
+		for (const VkPhysicalDevice& pendingDevice : deviceList)
 		{
 			// Select first device at the moment
 			if (isDeviceSupported(pendingDevice))
 			{
 				physicalDevice = pendingDevice;
 				break;
-			}			
+			}
 		}
 
 		if (physicalDevice == VK_NULL_HANDLE)
 		{
-			throw std::runtime_error("No vulkan device found.");
+			throw std::runtime_error("No suitable physical vulkan device found.");
 		}
 	}
 
@@ -262,7 +261,7 @@ protected:
 		std::set<std::string> requiredExtensions(DEVICE_EXTENSIONS.begin(), DEVICE_EXTENSIONS.end());
 
 		// swap chain extension check
-		for (const auto& ext: availableExtensions)
+		for (const auto& ext : availableExtensions)
 		{
 			requiredExtensions.erase(ext.extensionName);
 		}
@@ -317,7 +316,8 @@ protected:
 		VkDeviceCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		createInfo.pEnabledFeatures = &deviceFeature;
-		createInfo.enabledExtensionCount = 0;
+		createInfo.enabledExtensionCount = DEVICE_EXTENSIONS.size();
+		createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data();
 
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
 		createInfo.queueCreateInfoCount = queueCreateInfos.size();
@@ -333,7 +333,6 @@ protected:
 			throw std::runtime_error("Failed to create logical device.");
 		}
 
-		
 		vkGetDeviceQueue(device, indices.graphicsFamily, 0, &graphicsQueue);
 		vkGetDeviceQueue(device, indices.presentFamily, 0, &presentQueue);
 	}
@@ -361,7 +360,7 @@ protected:
 
 		return details;
 	}
-	
+
 
 #ifdef _DEBUG
 	// SEVERITY
@@ -380,13 +379,13 @@ protected:
 	// VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT    0x02
 	// VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT   0x04
 
-	static VKAPI_ATTR VkBool32 debugVKCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
-										       VkDebugUtilsMessageTypeFlagsEXT messageType, 
-		                                       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, 
-		                                       void* pUserData)
+	static VKAPI_ATTR VkBool32 debugVKCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData)
 	{
 		std::cerr << "[DEBUG]: " << pCallbackData->pMessage << std::endl;
-		
+
 		return VK_FALSE;
 	}
 
@@ -394,20 +393,20 @@ protected:
 	{
 		VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
 		debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		
-		debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
-			                        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | 
-			                        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
-			                        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-		
+
+		debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
 		debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-			                    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-			                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
 		debugInfo.pfnUserCallback = debugVKCallback;
 		debugInfo.pUserData = nullptr;
 
-		if (createDebugUtilsMessengerEXT(vulkanInstance, &debugInfo, nullptr, &debugMessenger) != VK_SUCCESS) 
+		if (createDebugUtilsMessengerEXT(vulkanInstance, &debugInfo, nullptr, &debugMessenger) != VK_SUCCESS)
 		{
 			throw std::runtime_error("failed to set up debug messenger!");
 		}
@@ -420,7 +419,7 @@ private:
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapChain;
 
-	VkPhysicalDevice physicalDevice { VK_NULL_HANDLE };
+	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
 	VkDevice device;
 
 	VkQueue graphicsQueue;
@@ -435,7 +434,7 @@ private:
 	VkDebugUtilsMessengerEXT debugMessenger;
 #endif
 
-	void initWindow() 
+	void initWindow()
 	{
 		glfwInit();
 
@@ -445,7 +444,7 @@ private:
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	}
 
-	void initVulkan() 
+	void initVulkan()
 	{
 		uint32_t glfwExtCount = 0;
 		const char** glfwExtensions;
@@ -470,15 +469,15 @@ private:
 		}
 	}
 
-	void cleanup() 
+	void cleanup()
 	{
 #ifdef _DEBUG
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
-		vkDestroySurfaceKHR(vulkanInstance, surface, nullptr);
-		vkDestroyDevice(device, nullptr);
-		vkDestroyInstance(vulkanInstance, nullptr);
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
+		vkDestroyDevice(device, nullptr);
+		vkDestroySurfaceKHR(vulkanInstance, surface, nullptr);
+		vkDestroyInstance(vulkanInstance, nullptr);
 
 		glfwDestroyWindow(window);
 
@@ -532,7 +531,7 @@ void HelloTriangleApplication::createVulkanInstance(const uint32_t& glfwExtCount
 
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
 	{
-		
+
 		debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 
 		debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -569,8 +568,8 @@ void HelloTriangleApplication::createSwapChain()
 	VkExtent2D swapExtent = chooseSwapExtent(swapChainDetails.capabilities);
 
 	// for tripple buffer
-	uint32_t imageCount = swapChainDetails.capabilities.minImageCount+ 1;
-	if (swapChainDetails.capabilities.maxImageCount > 0 && 
+	uint32_t imageCount = swapChainDetails.capabilities.minImageCount + 1;
+	if (swapChainDetails.capabilities.maxImageCount > 0 &&
 		imageCount > swapChainDetails.capabilities.maxImageCount)
 	{
 		imageCount = swapChainDetails.capabilities.maxImageCount;
@@ -578,7 +577,8 @@ void HelloTriangleApplication::createSwapChain()
 
 	VkSwapchainCreateInfoKHR swapChainCreateInfo = {};
 	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapChainCreateInfo.surface = surface; 
+	swapChainCreateInfo.surface = surface;
+
 	swapChainCreateInfo.minImageCount = imageCount;
 	swapChainCreateInfo.imageFormat = surfaceFormat.format;
 	swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
@@ -616,7 +616,7 @@ void HelloTriangleApplication::createSwapChain()
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 	swapChainImages.resize(imageCount);
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
-	
+
 	swapChainImageFormat = surfaceFormat.format;
 	swapChainExtent = swapExtent;
 }
