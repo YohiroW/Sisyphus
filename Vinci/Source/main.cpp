@@ -115,6 +115,7 @@ protected:
 	// Refactor later
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
 	void createSwapChain();
+	void createImageView();
 
 	void createSurface()
 	{
@@ -424,11 +425,12 @@ private:
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
-
-	std::vector<VkImage> swapChainImages;
-
+	
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+
+	std::vector<VkImage> swapChainImages;
+	std::vector<VkImageView> swapChainImageViews;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -459,6 +461,7 @@ private:
 		enumPhysicalDevice();
 		createLogicalDevice();
 		createSwapChain();
+		createImageView();
 	}
 
 	void mainLoop()
@@ -474,6 +477,11 @@ private:
 #ifdef _DEBUG
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
+		for (auto imageView: swapChainImageViews)
+		{
+			vkDestroyImageView(device, imageView, nullptr);
+		}
+
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 		vkDestroyDevice(device, nullptr);
 		vkDestroySurfaceKHR(vulkanInstance, surface, nullptr);
@@ -619,4 +627,31 @@ void HelloTriangleApplication::createSwapChain()
 
 	swapChainImageFormat = surfaceFormat.format;
 	swapChainExtent = swapExtent;
+}
+
+void HelloTriangleApplication::createImageView()
+{
+	int swapChainImageCount = swapChainImages.size();
+	swapChainImageViews.resize(swapChainImageCount);
+
+	for (int i = 0; i < swapChainImageCount; ++i)
+	{
+		VkImageViewCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		createInfo.image = swapChainImages[i];
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = swapChainImageFormat;
+		createInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
+		
+		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		createInfo.subresourceRange.baseArrayLayer = 0;
+		createInfo.subresourceRange.baseMipLevel = 0;
+		createInfo.subresourceRange.layerCount = 1;
+		createInfo.subresourceRange.levelCount = 1;
+
+		if (!vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) == VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create swap chain image view.");
+		}
+	}
 }
