@@ -116,6 +116,7 @@ protected:
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
 	void createSwapChain();
 	void createImageView();
+	void createGraphicsPipeline();
 
 	void createSurface()
 	{
@@ -462,6 +463,7 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageView();
+		createGraphicsPipeline();
 	}
 
 	void mainLoop()
@@ -654,4 +656,9 @@ void HelloTriangleApplication::createImageView()
 			throw std::runtime_error("Failed to create swap chain image view.");
 		}
 	}
+}
+
+void HelloTriangleApplication::createGraphicsPipeline()
+{
+
 }
