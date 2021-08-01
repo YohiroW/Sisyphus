@@ -26,6 +26,9 @@ set(libs
 
 # source files
 set(srcs
+	Include/Allocator/Allocator.h
+	Include/Allocator/Allocator.cpp
+	Include/Math/Math.hpp
 	Source/main.cpp)
 
 if(CMAKE_SIZEOF_VOID_P)
