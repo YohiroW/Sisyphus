@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <vector>
 #include <set>
+#include<fstream>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -92,6 +93,26 @@ void destroyDebugUtilsMessengerEXT(VkInstance instance,
 	}
 }
 #endif
+
+static std::vector<char> ReadFile(const std::string& filename)
+{
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open())
+	{
+		throw std::runtime_error("failed to open file..");
+	}
+
+	size_t fileSize = static_cast<size_t>(file.tellg());
+	std::vector<char> readBuffer(fileSize);
+
+	file.seekg(0);
+	file.read(readBuffer.data(), fileSize);
+
+	file.close();
+
+	return readBuffer;
+}
 
 std::vector<const char*> getRequiredExts(const uint32_t& glfwExtCount, const char** glfwExtensions)
 {
@@ -660,5 +681,8 @@ void HelloTriangleApplication::createImageView()
 
 void HelloTriangleApplication::createGraphicsPipeline()
 {
+	auto vscode = ReadFile("./Shader/vert.spv");
+	auto fscode = ReadFile("./Shader/frag.spv");
+
 
 }
