@@ -138,6 +138,7 @@ protected:
 	void createSwapChain();
 	void createImageView();
 	void createGraphicsPipeline();
+	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void createSurface()
 	{
@@ -681,8 +682,45 @@ void HelloTriangleApplication::createImageView()
 
 void HelloTriangleApplication::createGraphicsPipeline()
 {
-	auto vscode = ReadFile("./Shader/vert.spv");
-	auto fscode = ReadFile("./Shader/frag.spv");
+	auto vsCode = ReadFile("./Shader/vert.spv");
+	auto fsCode = ReadFile("./Shader/frag.spv");
 
+	VkShaderModule vsModule = createShaderModule(vsCode);
+	VkShaderModule fsModule = createShaderModule(fsCode);
 
+	// create graphic pipeline
+	VkPipelineShaderStageCreateInfo vsShaderStageCreateInfo = {};
+	vsShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vsShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vsShaderStageCreateInfo.module = vsModule;
+	vsShaderStageCreateInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fsShaderStageCreateInfo = {};
+	fsShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fsShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fsShaderStageCreateInfo.module = fsModule;
+	fsShaderStageCreateInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vsShaderStageCreateInfo, fsShaderStageCreateInfo };
+
+	vkDestroyShaderModule(device, fsModule, nullptr);
+	vkDestroyShaderModule(device, vsModule, nullptr);
 }
+
+VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
+{
+	VkShaderModuleCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	createInfo.codeSize = code.size();
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+	
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule))
+	{
+		throw std::runtime_error("Failed to create shader module..");
+	}
+
+	return shaderModule;
+}
+
+
