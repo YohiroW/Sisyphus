@@ -703,6 +703,36 @@ void HelloTriangleApplication::createGraphicsPipeline()
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vsShaderStageCreateInfo, fsShaderStageCreateInfo };
 
+	// Create vertex input layout
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+
+	// Setup Input Assembly
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
+	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+	// Setup viewport
+	VkViewport viewport = { 0, 0, swapChainExtent.width, swapChainExtent.height, 0.0f, 1.0f };
+	VkRect2D scissor = { VkOffset2D{0, 0}, swapChainExtent };
+	VkPipelineViewportStateCreateInfo viewportStateInfo = {};
+	viewportStateInfo.pViewports = &viewport;
+	viewportStateInfo.pScissors = &scissor;
+	viewportStateInfo.viewportCount = 1;
+	viewportStateInfo.scissorCount = 1;
+
+
+	VkGraphicsPipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+
 	vkDestroyShaderModule(device, fsModule, nullptr);
 	vkDestroyShaderModule(device, vsModule, nullptr);
 }
