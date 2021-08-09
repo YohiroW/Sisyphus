@@ -442,6 +442,7 @@ private:
 	VkInstance vulkanInstance;
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapChain;
+	VkPipelineLayout pipelineLayout;
 
 	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
 	VkDevice device;
@@ -506,6 +507,7 @@ private:
 			vkDestroyImageView(device, imageView, nullptr);
 		}
 
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 		vkDestroyDevice(device, nullptr);
 		vkDestroySurfaceKHR(vulkanInstance, surface, nullptr);
@@ -726,12 +728,81 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	viewportStateInfo.viewportCount = 1;
 	viewportStateInfo.scissorCount = 1;
 
-
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.stageCount = 2;
 	pipelineInfo.pStages = shaderStages;
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
+
+	// Rasterization
+	VkPipelineRasterizationStateCreateInfo rasterizer = {};
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	rasterizer.lineWidth = 1.0f;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.depthBiasEnable = VK_FALSE;
+	rasterizer.depthBiasClamp = 0.0f;
+	rasterizer.depthBiasConstantFactor = 0.0f;
+	rasterizer.depthBiasSlopeFactor = 0.0f;
+
+	// MSAA - disable it for now
+	VkPipelineMultisampleStateCreateInfo multiSample = {};
+	multiSample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multiSample.sampleShadingEnable = VK_FALSE;
+	multiSample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multiSample.minSampleShading = 1.0f;
+	multiSample.pSampleMask = nullptr;
+	multiSample.alphaToCoverageEnable = VK_FALSE;
+	multiSample.alphaToOneEnable = VK_FALSE;
+
+	// Depth and Stencil
+
+	// Color blending
+	VkPipelineColorBlendAttachmentState colorBlendAttachment = {}; // for single frame buffer
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo colorBlend = {}; // global state
+	colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlend.logicOpEnable = VK_FALSE;
+	colorBlend.logicOp = VK_LOGIC_OP_COPY;
+	colorBlend.attachmentCount = 1;
+	colorBlend.pAttachments = &colorBlendAttachment;
+	colorBlend.blendConstants[0] = 0.0f;
+	colorBlend.blendConstants[1] = 0.0f;
+	colorBlend.blendConstants[2] = 0.0f;
+	colorBlend.blendConstants[3] = 0.0f;
+
+	// Setup dynamic state
+	VkDynamicState dynamicState[] = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_LINE_WIDTH
+	};
+
+	VkPipelineDynamicStateCreateInfo dynamicStateInfo = {};
+	dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicStateInfo.dynamicStateCount = 2;
+	dynamicStateInfo.pDynamicStates = dynamicState;
+
+	// Pipeline layout
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 0;
+	pipelineLayoutInfo.pSetLayouts = nullptr;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create pipeline layout");
+	}
 
 	vkDestroyShaderModule(device, fsModule, nullptr);
 	vkDestroyShaderModule(device, vsModule, nullptr);
