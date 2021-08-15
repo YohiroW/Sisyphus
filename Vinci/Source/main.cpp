@@ -139,6 +139,7 @@ protected:
 	void createImageView();
 	void createRenderPass();
 	void createGraphicsPipeline();
+	void createFrameBuffers();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void createSurface()
@@ -457,6 +458,7 @@ private:
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
+	std::vector<VkFramebuffer> swapChainFramebuffers;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -505,6 +507,11 @@ private:
 #ifdef _DEBUG
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
+		for (auto framebuffer: swapChainFramebuffers)
+		{
+			vkDestroyFramebuffer(device, framebuffer, nullptr);
+		}
+
 		for (auto imageView: swapChainImageViews)
 		{
 			vkDestroyImageView(device, imageView, nullptr);
@@ -843,6 +850,33 @@ void HelloTriangleApplication::createGraphicsPipeline()
 
 	vkDestroyShaderModule(device, fsModule, nullptr);
 	vkDestroyShaderModule(device, vsModule, nullptr);
+}
+
+void HelloTriangleApplication::createFrameBuffers()
+{
+	swapChainFramebuffers.resize(swapChainImageViews.size());
+
+	for (size_t i = 0; i< swapChainImageViews.size(); i++)
+	{
+		VkImageView attachments[] = { swapChainImageViews [i]};
+
+		VkFramebufferCreateInfo framebufferInfo = {};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = renderPass;
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.width = swapChainExtent.width;
+		framebufferInfo.height = swapChainExtent.height;
+		framebufferInfo.layers = 1;
+
+		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create buffer..");
+		}
+
+
+	}
+
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
