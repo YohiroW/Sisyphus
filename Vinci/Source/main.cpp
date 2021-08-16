@@ -447,6 +447,7 @@ private:
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapChain;
 	VkPipelineLayout pipelineLayout;
+	VkPipeline graphicsPipeline;
 	VkRenderPass renderPass;
 	VkCommandPool commandPool;
 
@@ -523,6 +524,7 @@ private:
 			vkDestroyImageView(device, imageView, nullptr);
 		}
 
+		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		vkDestroyRenderPass(device, renderPass, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -779,12 +781,6 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	viewportStateInfo.viewportCount = 1;
 	viewportStateInfo.scissorCount = 1;
 
-	VkGraphicsPipelineCreateInfo pipelineInfo = {};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
-	pipelineInfo.pVertexInputState = &vertexInputInfo;
-
 	// Rasterization
 	VkPipelineRasterizationStateCreateInfo rasterizer = {};
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -853,6 +849,26 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create pipeline layout");
+	}
+
+	VkGraphicsPipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
+	pipelineInfo.pViewportState = &viewportStateInfo;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multiSample;
+	pipelineInfo.pColorBlendState = &colorBlend;
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = renderPass;
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create graphics pipelin..!");
 	}
 
 	vkDestroyShaderModule(device, fsModule, nullptr);
@@ -926,6 +942,29 @@ void HelloTriangleApplication::createCommandBuffers()
 			throw std::runtime_error("Failed to create command buffers..");
 		}
 
+		// Rendering process will begin once vkCmdBeginRenderPass invoked
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = renderPass;
+		renderPassInfo.framebuffer = swapChainFramebuffers[i];
+		renderPassInfo.renderArea.extent = swapChainExtent;
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };  // For VK_ATTACHMENT_LOAD_OP_CLEAR
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		// Begin render pass
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to record command buffer..");
+		}
 	}
 }
 
