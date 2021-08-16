@@ -140,6 +140,8 @@ protected:
 	void createRenderPass();
 	void createGraphicsPipeline();
 	void createFrameBuffers();
+	void createCommandPool();
+	void createCommandBuffers();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void createSurface()
@@ -446,6 +448,7 @@ private:
 	VkSwapchainKHR swapChain;
 	VkPipelineLayout pipelineLayout;
 	VkRenderPass renderPass;
+	VkCommandPool commandPool;
 
 	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
 	VkDevice device;
@@ -459,6 +462,7 @@ private:
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
 	std::vector<VkFramebuffer> swapChainFramebuffers;
+	std::vector<VkCommandBuffer> commandBuffers;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -492,6 +496,8 @@ private:
 		createImageView();
 		createRenderPass();
 		createGraphicsPipeline();
+		createCommandPool();
+		createCommandBuffers();
 	}
 
 	void mainLoop()
@@ -517,6 +523,7 @@ private:
 			vkDestroyImageView(device, imageView, nullptr);
 		}
 
+		vkDestroyCommandPool(device, commandPool, nullptr);
 		vkDestroyRenderPass(device, renderPass, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
@@ -873,10 +880,53 @@ void HelloTriangleApplication::createFrameBuffers()
 		{
 			throw std::runtime_error("Failed to create buffer..");
 		}
+	}
+}
 
+void HelloTriangleApplication::createCommandPool()
+{
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 
+	VkCommandPoolCreateInfo commandPoolInfo = {};
+	commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+	//commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create command pool..");
+	}
+}
+
+void HelloTriangleApplication::createCommandBuffers()
+{
+	commandBuffers.resize(swapChainFramebuffers.size());
+
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {}; 
+	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO; 
+	commandBufferAllocateInfo.commandPool = commandPool;
+	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.commandBufferCount = commandBuffers.size();
+
+	if (vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate command buffer..");
 	}
 
+	// Record commands to command buffer
+	for (size_t i = 0; i< commandBuffers.size(); ++i)
+	{
+		VkCommandBufferBeginInfo cmdBeginInfo = {};
+		cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		cmdBeginInfo.pInheritanceInfo = nullptr;
+
+		if (vkBeginCommandBuffer(commandBuffers[i], &cmdBeginInfo) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create command buffers..");
+		}
+
+	}
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
