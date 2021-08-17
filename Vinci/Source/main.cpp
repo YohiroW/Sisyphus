@@ -740,8 +740,8 @@ void HelloTriangleApplication::createRenderPass()
 
 void HelloTriangleApplication::createGraphicsPipeline()
 {
-	auto vsCode = ReadFile("./Shader/vert.spv");
-	auto fsCode = ReadFile("./Shader/frag.spv");
+	auto vsCode = ReadFile("../Shader/vert.spv");
+	auto fsCode = ReadFile("../Shader/frag.spv");
 
 	VkShaderModule vsModule = createShaderModule(vsCode);
 	VkShaderModule fsModule = createShaderModule(fsCode);
