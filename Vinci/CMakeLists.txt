@@ -10,6 +10,12 @@ if (MSVC_VERSION GREATER_EQUAL "1900")
     endif()
 endif()
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(platform x64)
+else(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    set(platform x86)
+endif()	
+
 # use unicode in projects		
 add_definitions(-DUNICODE -D_UNICODE)
 
@@ -30,13 +36,7 @@ set(srcs
 	Include/Allocator/Allocator.h
 	Include/Allocator/Allocator.cpp
 	Include/Math/Math.hpp
-	Source/main.cpp)
-
-if(CMAKE_SIZEOF_VOID_P)
-    set(platform x64)
-else(CMAKE_SIZEOF_VOID_P)
-    set(platform x86)
-endif(CMAKE_SIZEOF_VOID_P)	 
+	Source/main.cpp) 
 
 link_directories("${thirdPartyPath}/glfw-3.3.4/Lib/")
 link_directories("$ENV{VULKAN_SDK}/Lib/")
