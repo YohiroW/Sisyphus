@@ -354,7 +354,7 @@ protected:
 		createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
 		createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
 #else
-		createInfo.enabledLayerCount = 0£»
+		createInfo.enabledLayerCount = 0Â£Â»
 #endif
 		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
 		{
@@ -393,14 +393,14 @@ protected:
 #ifdef _DEBUG
 	// SEVERITY
 	// used for diagnostic 
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT£º  0x0001
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXTÂ£Âº  0x0001
 
 	// used for resources creation
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT£º     0x0010
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXTÂ£Âº     0x0010
 
 	// warning and error
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT£º  0x0100
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT£º    0x1000
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXTÂ£Âº  0x0100
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXTÂ£Âº    0x1000
 
 	// MESSAGE TYPE
 	// VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT       0x01
@@ -497,6 +497,7 @@ private:
 		createImageView();
 		createRenderPass();
 		createGraphicsPipeline();
+		createFrameBuffers();
 		createCommandPool();
 		createCommandBuffers();
 	}
@@ -712,6 +713,8 @@ void HelloTriangleApplication::createRenderPass()
 	attachmentColor.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachmentColor.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachmentColor.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentColor.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentColor.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference attachmentColorRef;
 	attachmentColorRef.attachment = 0;
@@ -776,6 +779,7 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	VkViewport viewport = { 0, 0, swapChainExtent.width, swapChainExtent.height, 0.0f, 1.0f };
 	VkRect2D scissor = { VkOffset2D{0, 0}, swapChainExtent };
 	VkPipelineViewportStateCreateInfo viewportStateInfo = {};
+	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportStateInfo.pViewports = &viewport;
 	viewportStateInfo.pScissors = &scissor;
 	viewportStateInfo.viewportCount = 1;
