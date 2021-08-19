@@ -13,31 +13,13 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const char* APPNAME = "VINCI";
 
+const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
 #ifdef _DEBUG
 /// Validation Layer should be abstracted, but leave it here for learning usage
 /// We can learn how to make validation configuration by vk_layer_settings.txt
 /// Currently use default setting in this solution. 
-
 const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
-const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-
-struct QueueFamilyIndices
-{
-	int graphicsFamily = -1;
-	int presentFamily = -1;
-
-	bool IsComplete()
-	{
-		return graphicsFamily >= 0 && presentFamily >= 0;
-	}
-};
-
-struct SwapChainSupportDetail
-{
-	VkSurfaceCapabilitiesKHR capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> presentModes;
-};
 
 bool checkValidationLayerSupport()
 {
@@ -94,6 +76,24 @@ void destroyDebugUtilsMessengerEXT(VkInstance instance,
 	}
 }
 #endif
+
+struct QueueFamilyIndices
+{
+	int graphicsFamily = -1;
+	int presentFamily = -1;
+
+	bool IsComplete()
+	{
+		return graphicsFamily >= 0 && presentFamily >= 0;
+	}
+};
+
+struct SwapChainSupportDetail
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentModes;
+};
 
 static std::vector<char> ReadFile(const std::string& filename)
 {
@@ -359,7 +359,7 @@ protected:
 		createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
 		createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
 #else
-		createInfo.enabledLayerCount = 0£»
+		createInfo.enabledLayerCount = 0;
 #endif
 		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
 		{
@@ -393,7 +393,6 @@ protected:
 
 		return details;
 	}
-
 
 #ifdef _DEBUG
 	// SEVERITY
