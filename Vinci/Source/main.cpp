@@ -349,11 +349,11 @@ protected:
 		VkDeviceCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		createInfo.pEnabledFeatures = &deviceFeature;
-		createInfo.enabledExtensionCount = DEVICE_EXTENSIONS.size();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(DEVICE_EXTENSIONS.size());
 		createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data();
 
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
-		createInfo.queueCreateInfoCount = queueCreateInfos.size();
+		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 
 #ifdef _DEBUG
 		createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
@@ -694,7 +694,7 @@ void HelloTriangleApplication::createSwapChain()
 
 void HelloTriangleApplication::createImageView()
 {
-	int swapChainImageCount = swapChainImages.size();
+	size_t swapChainImageCount = swapChainImages.size();
 	swapChainImageViews.resize(swapChainImageCount);
 
 	for (int i = 0; i < swapChainImageCount; ++i)
@@ -802,7 +802,7 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
 	// Setup viewport
-	VkViewport viewport = { 0, 0, swapChainExtent.width, swapChainExtent.height, 0.0f, 1.0f };
+	VkViewport viewport = { 0, 0, (float)swapChainExtent.width, (float)swapChainExtent.height, 0.0f, 1.0f };
 	VkRect2D scissor = { VkOffset2D{0, 0}, swapChainExtent };
 	VkPipelineViewportStateCreateInfo viewportStateInfo = {};
 	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -952,7 +952,7 @@ void HelloTriangleApplication::createCommandBuffers()
 	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO; 
 	commandBufferAllocateInfo.commandPool = commandPool;
 	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufferAllocateInfo.commandBufferCount = commandBuffers.size();
+	commandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
 
 	if (vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS)
 	{
