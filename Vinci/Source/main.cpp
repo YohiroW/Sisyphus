@@ -6,7 +6,8 @@
 #include <cstdlib>
 #include <vector>
 #include <set>
-#include<fstream>
+#include <fstream>
+#include <algorithm>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
