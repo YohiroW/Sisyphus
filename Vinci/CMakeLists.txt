@@ -44,14 +44,20 @@ link_directories("$ENV{VULKAN_SDK}/Lib/")
 add_executable(Vinci "${srcs}")
 target_link_libraries(Vinci "${libs}")
 
+# Compile shaders when finish build
+add_custom_command(
+    TARTGET Vinci
+    POST_BUILD
+    COMMAND "$(OutDir)..\\..\\Shader\\CompileShader.bat")
+
 # Add custom command to copy data needed
-# add_custom_command(
-    # TARTGET Vinci
-    # POST_BUILD
-    # COMMAND if not exist "$(OutDir)renderdoc.dll"
-    # copy /Y
-    # "$(OutDir)..\\..\\ThirdParty\\RenderDoc\\renderdoc.dll"
-    # "$(OutDir)")
+add_custom_command(
+    TARTGET Vinci
+    POST_BUILD
+    COMMAND if not exist "$(OutDir)renderdoc.dll"
+    copy /Y
+    "$(OutDir)..\\..\\ThirdParty\\RenderDoc\\renderdoc.dll"
+    "$(OutDir)")
 
 # working directories
 # set_target_properties(Vinci PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/Assets")
