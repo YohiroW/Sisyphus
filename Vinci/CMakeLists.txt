@@ -46,13 +46,13 @@ target_link_libraries(Vinci "${libs}")
 
 # Compile shaders when finish build
 add_custom_command(
-    TARTGET Vinci
+    TARGET Vinci
     POST_BUILD
     COMMAND "$(OutDir)..\\..\\Shader\\CompileShader.bat")
 
 # Add custom command to copy data needed
 add_custom_command(
-    TARTGET Vinci
+    TARGET Vinci
     POST_BUILD
     COMMAND if not exist "$(OutDir)renderdoc.dll"
     copy /Y
