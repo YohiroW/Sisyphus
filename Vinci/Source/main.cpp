@@ -13,6 +13,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const char* APPNAME = "VINCI";
 
+const int MAX_FRAMES_IN_SWAPCHAIN = 2;
 const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 #ifdef _DEBUG
@@ -144,7 +145,7 @@ protected:
 	void createFrameBuffers();
 	void createCommandPool();
 	void createCommandBuffers();
-	void createSemaphore();
+	void createSyncObjects();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void draw();
@@ -397,14 +398,14 @@ protected:
 #ifdef _DEBUG
 	// SEVERITY
 	// used for diagnostic 
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT£º  0x0001
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT£  0x0001
 
 	// used for resources creation
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT£º     0x0010
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT£     0x0010
 
 	// warning and error
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT£º  0x0100
-	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT£º    0x1000
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT£  0x0100
+	// VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT£    0x1000
 
 	// MESSAGE TYPE
 	// VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT       0x01
@@ -464,8 +465,11 @@ private:
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
 
-	VkSemaphore imageAvailableSemaphore;
-	VkSemaphore renderFinishSemaphore;
+	// For synchronrization
+	size_t currentFrame = 0;
+	std::vector<VkSemaphore> imageAvailableSemaphores;
+	std::vector<VkSemaphore> renderFinishSemaphores;
+	std::vector<VkFence> presentFences;
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
@@ -507,7 +511,7 @@ private:
 		createFrameBuffers();
 		createCommandPool();
 		createCommandBuffers();
-		createSemaphore();
+		createSyncObjects();
 	}
 
 	void mainLoop()
@@ -519,7 +523,7 @@ private:
 		}
 
 		//
-		vkDeviceWaitIdle(device);
+		//vkDeviceWaitIdle(device);
 	}
 
 	void cleanup()
@@ -527,8 +531,13 @@ private:
 #ifdef _DEBUG
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
-		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
-		vkDestroySemaphore(device, renderFinishSemaphore, nullptr);
+
+		for (size_t i = 0; i< MAX_FRAMES_IN_SWAPCHAIN; ++i)
+		{
+			vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+			vkDestroySemaphore(device, renderFinishSemaphores[i], nullptr);
+			vkDestroyFence(device, presentFences[i], nullptr);
+		}
 
 		for (auto framebuffer: swapChainFramebuffers)
 		{
@@ -997,15 +1006,27 @@ void HelloTriangleApplication::createCommandBuffers()
 	}
 }
 
-void HelloTriangleApplication::createSemaphore()
+void HelloTriangleApplication::createSyncObjects()
 {
+	imageAvailableSemaphores.resize(MAX_FRAMES_IN_SWAPCHAIN);
+	renderFinishSemaphores.resize(MAX_FRAMES_IN_SWAPCHAIN);
+	presentFences.resize(MAX_FRAMES_IN_SWAPCHAIN);
+
 	VkSemaphoreCreateInfo semaphoreInfo = {}; 
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
-		vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishSemaphore) != VK_SUCCESS)
+	VkFenceCreateInfo fenceInfo = {};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (size_t i= 0; i< MAX_FRAMES_IN_SWAPCHAIN; ++i)
 	{
-		throw std::runtime_error("Failed to create semaphore");
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishSemaphores[i]) != VK_SUCCESS ||
+			vkCreateFence(device, & fenceInfo, nullptr, &presentFences[i]))
+		{
+			throw std::runtime_error("Failed to create semaphore");
+		}
 	}
 }
 
@@ -1027,18 +1048,22 @@ VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<ch
 
 void HelloTriangleApplication::draw()
 {
+	//
+	vkWaitForFences(device, 1, &presentFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t >::max());
+	vkResetFences(device, 1, &presentFences[currentFrame]);
+
 	// Get image from swap chain
 	uint32_t imageIdx = 0;
 	constexpr uint64_t timeOut = std::numeric_limits<uint64_t >::max();
 
 	// If we got available image, acquire it otherwise block it.
-	vkAcquireNextImageKHR(device, swapChain, timeOut, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIdx);
+	vkAcquireNextImageKHR(device, swapChain, timeOut, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIdx);
 
 	// Prepare submit to command list
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphore = imageAvailableSemaphore;
+	VkSemaphore waitSemaphore = imageAvailableSemaphores[currentFrame];
 	VkPipelineStageFlags waitStage[] = {
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 	};
@@ -1051,12 +1076,12 @@ void HelloTriangleApplication::draw()
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffers[imageIdx];
 
-	VkSemaphore signalSemaphore = renderFinishSemaphore;
+	VkSemaphore signalSemaphore = renderFinishSemaphores[currentFrame];
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &signalSemaphore;
 
 	// Submit to graphic command queue
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, presentFences[currentFrame]) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to submit to graphic command queue..");
 	}
@@ -1074,6 +1099,8 @@ void HelloTriangleApplication::draw()
 	presentInfo.pResults = nullptr;
 
 	vkQueuePresentKHR(presentQueue, &presentInfo);
+
+	currentFrame = (currentFrame+ 1)% MAX_FRAMES_IN_SWAPCHAIN;
 }
 
 
