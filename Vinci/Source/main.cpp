@@ -146,6 +146,10 @@ protected:
 	void createCommandPool();
 	void createCommandBuffers();
 	void createSyncObjects();
+
+	void recreateSwapChain();
+	void cleanupSwapChain();
+
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void draw();
@@ -1028,6 +1032,24 @@ void HelloTriangleApplication::createSyncObjects()
 			throw std::runtime_error("Failed to create semaphore");
 		}
 	}
+}
+
+void HelloTriangleApplication::recreateSwapChain()
+{
+	vkDeviceWaitIdle(device);
+
+	cleanupSwapChain();
+
+	createSwapChain();
+	createImageView();
+	createRenderPass();
+	createGraphicsPipeline();
+	createFrameBuffers();
+	createCommandBuffers();
+}
+
+void HelloTriangleApplication::cleanupSwapChain()
+{
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
