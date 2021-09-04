@@ -535,6 +535,7 @@ private:
 #ifdef _DEBUG
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
+		cleanupSwapChain();
 
 		for (size_t i = 0; i< MAX_FRAMES_IN_SWAPCHAIN; ++i)
 		{
