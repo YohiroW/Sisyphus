@@ -1050,6 +1050,24 @@ void HelloTriangleApplication::recreateSwapChain()
 
 void HelloTriangleApplication::cleanupSwapChain()
 {
+	// Cleanup frame buffer, command buffer, pipeline object, pipeline layout, render pass, image view, swap chain in order
+	for (size_t i = 0; i< swapChainFramebuffers.size(); ++i)
+	{
+		vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+	}
+
+	vkFreeCommandBuffers(device, commandPool, commandBuffers.size(), commandBuffers.data());
+
+	vkDestroyPipeline(device, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	vkDestroyRenderPass(device, renderPass, nullptr);
+
+	for (size_t i = 0; i < swapChainImageViews.size(); ++i)
+	{
+		vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+	}
+
+	vkDestroySwapchainKHR(device, swapChain, nullptr);
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
