@@ -480,6 +480,9 @@ private:
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
 
+	// Indicate if we need recreate swap chain
+	bool bFrameBufferResized = false;
+
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
 #endif
@@ -492,6 +495,11 @@ private:
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+		glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height)
+		{
+			auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
+			app->bFrameBufferResized = true;
+		});
 	}
 
 	void initVulkan()
@@ -1037,6 +1045,15 @@ void HelloTriangleApplication::createSyncObjects()
 
 void HelloTriangleApplication::recreateSwapChain()
 {
+	// minimize
+	int width = 0;
+	int height = 0;
+	while (width == 0 || height == 0)
+	{
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+
 	vkDeviceWaitIdle(device);
 
 	cleanupSwapChain();
@@ -1098,7 +1115,16 @@ void HelloTriangleApplication::draw()
 	constexpr uint64_t timeOut = std::numeric_limits<uint64_t >::max();
 
 	// If we got available image, acquire it otherwise block it.
-	vkAcquireNextImageKHR(device, swapChain, timeOut, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIdx);
+	VkResult ret = vkAcquireNextImageKHR(device, swapChain, timeOut, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIdx);
+	if (ret == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		recreateSwapChain();
+		return;
+	}
+	else if (ret != VK_SUCCESS && ret != VK_SUBOPTIMAL_KHR)
+	{
+		throw std::runtime_error("Failed to acquire swap chain image.");
+	}
 
 	// Prepare submit to command list
 	VkSubmitInfo submitInfo = {};
@@ -1139,7 +1165,17 @@ void HelloTriangleApplication::draw()
 	presentInfo.pImageIndices = &imageIdx;
 	presentInfo.pResults = nullptr;
 
-	vkQueuePresentKHR(presentQueue, &presentInfo);
+	ret = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+	if (ret == VK_ERROR_OUT_OF_DATE_KHR || ret == VK_SUBOPTIMAL_KHR || bFrameBufferResized)
+	{
+		bFrameBufferResized = false;
+		recreateSwapChain();
+	}
+	else if (ret != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to present swap chain image.");
+	}
 
 	currentFrame = (currentFrame+ 1)% MAX_FRAMES_IN_SWAPCHAIN;
 }
