@@ -23,8 +23,9 @@ set(thirdPartyPath "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 # include directories
 include_directories("$ENV{VULKAN_SDK}/Include/")
-include_directories("ThirdParty/glfw-3.3.4/include/")
-include_directories("ThirdParty/fbxsdk/include")
+include_directories("${thirdPartyPath}/glfw-3.3.4/include")
+include_directories("${thirdPartyPath}/fbxsdk/include")
+include_directories("${thirdPartyPath}/glm")
 
 # add referenced library		 		 
 set(libs 
