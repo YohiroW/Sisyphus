@@ -135,6 +135,9 @@ public:
 		cleanup();
 	}
 
+	// Indicate if we need recreate swap chain
+	bool bFrameBufferResized = false;
+
 protected:
 	// Refactor later
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
@@ -480,9 +483,6 @@ private:
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
 
-	// Indicate if we need recreate swap chain
-	bool bFrameBufferResized = false;
-
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
 #endif
@@ -495,11 +495,20 @@ private:
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+		glfwSetWindowUserPointer(window, this);
 		glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height)
 		{
 			auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
-			app->bFrameBufferResized = true;
+			if (app)
+			{
+				app->bFrameBufferResized = true;
+			}
+			else
+			{
+				throw std::runtime_error("Failed to cast glfw user pointer to specified type!");
+			}
 		});
+		//glfwSetFramebufferSizeCallback(window, OnFrameBufferResized);
 	}
 
 	void initVulkan()
@@ -1108,7 +1117,6 @@ void HelloTriangleApplication::draw()
 {
 	//
 	vkWaitForFences(device, 1, &presentFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t >::max());
-	vkResetFences(device, 1, &presentFences[currentFrame]);
 
 	// Get image from swap chain
 	uint32_t imageIdx = 0;
@@ -1147,6 +1155,8 @@ void HelloTriangleApplication::draw()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &signalSemaphore;
 
+	vkResetFences(device, 1, &presentFences[currentFrame]);
+
 	// Submit to graphic command queue
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, presentFences[currentFrame]) != VK_SUCCESS)
 	{
@@ -1179,5 +1189,4 @@ void HelloTriangleApplication::draw()
 
 	currentFrame = (currentFrame+ 1)% MAX_FRAMES_IN_SWAPCHAIN;
 }
-
 
