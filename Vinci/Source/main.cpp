@@ -10,6 +10,13 @@
 #include <set>
 #include <fstream>
 #include <algorithm>
+#include <array>
+
+//// TODO: use glm as math library for now, this lib may be replaced or re-implement later.
+typedef glm::vec2 Vector2;
+typedef glm::vec3 Vector3;
+typedef glm::vec4 Vector4;
+////
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -17,6 +24,72 @@ const char* APPNAME = "VINCI";
 
 const int MAX_FRAMES_IN_SWAPCHAIN = 2;
 const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+struct Vertex
+{
+	//Vertex()
+	//{
+	//	InputDescription.binding = 0;
+	//	InputDescription.stride = sizeof(Vertex);
+	//	InputDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	//
+	//}
+
+	Vector2 position;
+	Vector3 color;
+
+	//static VkVertexInputBindingDescription InputDescription;
+
+	static VkVertexInputBindingDescription getDescription()
+	{
+		VkVertexInputBindingDescription desc = {};
+		desc.binding = 0;
+		desc.stride = sizeof(Vertex);
+		desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		return desc;
+	}
+
+	// for only position and color in Vertex
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescription()
+	{
+		std::array<VkVertexInputAttributeDescription, 2> ret = {};
+		ret[0].location = 0;
+		ret[0].binding = 0;
+		ret[0].format = VK_FORMAT_R32G32_SFLOAT;
+		ret[0].offset = offsetof(Vertex, position);
+
+		ret[1] = {1 ,0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color) };
+
+		return ret;
+	}
+};
+
+struct QueueFamilyIndices
+{
+	int graphicsFamily = -1;
+	int presentFamily = -1;
+
+	bool IsComplete()
+	{
+		return graphicsFamily >= 0 && presentFamily >= 0;
+	}
+};
+
+struct SwapChainSupportDetail
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentModes;
+};
+
+// interleaving vertex attributes
+const std::vector<Vertex> DummyVertices = {
+	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
+
 
 #ifdef _DEBUG
 /// Validation Layer should be abstracted, but leave it here for learning usage
@@ -80,24 +153,6 @@ void destroyDebugUtilsMessengerEXT(VkInstance instance,
 }
 #endif
 
-struct QueueFamilyIndices
-{
-	int graphicsFamily = -1;
-	int presentFamily = -1;
-
-	bool IsComplete()
-	{
-		return graphicsFamily >= 0 && presentFamily >= 0;
-	}
-};
-
-struct SwapChainSupportDetail
-{
-	VkSurfaceCapabilitiesKHR capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> presentModes;
-};
-
 static std::vector<char> ReadFile(const std::string& filename)
 {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -137,6 +192,23 @@ public:
 		cleanup();
 	}
 
+	uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+	{
+		VkPhysicalDeviceMemoryProperties memoryProperties;
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+		for (uint32_t i = 0; i< memoryProperties.memoryTypeCount; ++i)
+		{
+			if (typeFilter & (1 << i) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find valid memory type.");
+	}
+
+public:
 	// Indicate if we need recreate swap chain
 	bool bFrameBufferResized = false;
 
@@ -149,6 +221,7 @@ protected:
 	void createGraphicsPipeline();
 	void createFrameBuffers();
 	void createCommandPool();
+	void createVertexBuffer();
 	void createCommandBuffers();
 	void createSyncObjects();
 
@@ -485,6 +558,10 @@ private:
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
 
+	//
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
+
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
 #endif
@@ -533,6 +610,7 @@ private:
 		createGraphicsPipeline();
 		createFrameBuffers();
 		createCommandPool();
+		createVertexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -562,6 +640,10 @@ private:
 			vkDestroySemaphore(device, renderFinishSemaphores[i], nullptr);
 			vkDestroyFence(device, presentFences[i], nullptr);
 		}
+
+		//
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vkFreeMemory(device, vertexBufferMemory, nullptr);
 
 		for (auto framebuffer: swapChainFramebuffers)
 		{
@@ -820,12 +902,15 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vsShaderStageCreateInfo, fsShaderStageCreateInfo };
 
 	// Create vertex input layout
+	VkVertexInputBindingDescription vertexBindingDesc = Vertex::getDescription();
+	std::array<VkVertexInputAttributeDescription, 2> vertexAttributeDesc = Vertex::getAttributeDescription();
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDesc;
 	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+	vertexInputInfo.pVertexAttributeDescriptions = vertexAttributeDesc.data();
 
 	// Setup Input Assembly
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
@@ -976,6 +1061,44 @@ void HelloTriangleApplication::createCommandPool()
 	}
 }
 
+void HelloTriangleApplication::createVertexBuffer()
+{
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = sizeof(DummyVertices[0])* DummyVertices.size();
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	//bufferInfo.flags = 0;  // memory sparse in buffer
+
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create vertex buffer.");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate device memory.");
+	}
+
+	vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+	// map dummy vertices mem to gpu
+	void* data = nullptr;
+	vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+		memcpy(data, DummyVertices.data(), static_cast<size_t>(bufferInfo.size));
+	vkUnmapMemory(device, vertexBufferMemory);
+
+	// VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+}
+
 void HelloTriangleApplication::createCommandBuffers()
 {
 	commandBuffers.resize(swapChainFramebuffers.size());
@@ -1018,8 +1141,13 @@ void HelloTriangleApplication::createCommandBuffers()
 		// Begin render pass
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+			VkBuffer vertexBuffers[] = { vertexBuffer };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+	
+			vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(DummyVertices.size()), 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
