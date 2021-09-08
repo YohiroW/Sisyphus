@@ -907,9 +907,9 @@ void HelloTriangleApplication::createGraphicsPipeline()
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
 	vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDesc;
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.vertexAttributeDescriptionCount = vertexAttributeDesc.size();
 	vertexInputInfo.pVertexAttributeDescriptions = vertexAttributeDesc.data();
 
 	// Setup Input Assembly
