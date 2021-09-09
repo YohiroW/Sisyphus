@@ -1025,7 +1025,7 @@ void HelloTriangleApplication::createGraphicsPipeline()
 
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to create graphics pipelin..!");
+		throw std::runtime_error("Failed to create graphics pipeline..!");
 	}
 
 	vkDestroyShaderModule(device, fsModule, nullptr);
