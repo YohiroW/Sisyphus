@@ -1313,7 +1313,7 @@ void HelloTriangleApplication::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSi
 	submitInfo.pCommandBuffers = &cmdBuffer;
 
 	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	//vkQueueWaitIdle(graphicsQueue);
+	vkQueueWaitIdle(graphicsQueue);
 
 	vkFreeCommandBuffers(device, commandPool, 1, &cmdBuffer);
 }
