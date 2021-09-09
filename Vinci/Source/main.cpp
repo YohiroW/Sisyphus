@@ -238,6 +238,7 @@ protected:
 	void cleanupSwapChain();
 
 	void createBuffer(VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperty, VkBuffer& buffer);
+	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void draw();
@@ -1073,20 +1074,47 @@ void HelloTriangleApplication::createCommandPool()
 
 void HelloTriangleApplication::createVertexBuffer()
 {
-	uint32_t size = sizeof(DummyVertices[0]) * DummyVertices.size();
-	createBuffer(vertexBufferMemory, 
-				 size,
-		         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+	VkDeviceSize bufferSize = sizeof(DummyVertices[0]) * DummyVertices.size();
+	
+	// Traditional method to use one buffer to transfer from cpu to gpu
+	//createBuffer(vertexBufferMemory, 
+	//			 bufferSize,
+	//	         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+	//	         vertexBuffer);
+
+	//// map dummy vertices mem to gpu
+	//void* data = nullptr;
+	//vkMapMemory(device, vertexBufferMemory, 0, bufferSize, 0, &data);
+	//	memcpy(data, DummyVertices.data(), static_cast<size_t>(bufferSize));
+	//vkUnmapMemory(device, vertexBufferMemory);
+
+	// Transfer specified buffer to GPU
+	VkBuffer stageBuffer;
+	VkDeviceMemory stageBufferMemory;
+	void* data = nullptr;
+	
+	createBuffer(stageBufferMemory, 
+				 bufferSize,
+		         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+		         stageBuffer);
+
+	vkMapMemory(device, stageBufferMemory, 0, bufferSize, 0, &data);
+		memcpy_s(data, bufferSize, DummyVertices.data(), bufferSize);
+	vkUnmapMemory(device, stageBufferMemory);
+
+	// Use GPU local memory, it can get better perf
+	createBuffer(vertexBufferMemory,
+		         bufferSize,
+		         VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		         vertexBuffer);
 
-	// map dummy vertices mem to gpu
-	void* data = nullptr;
-	vkMapMemory(device, vertexBufferMemory, 0, size, 0, &data);
-		memcpy(data, DummyVertices.data(), static_cast<size_t>(size));
-	vkUnmapMemory(device, vertexBufferMemory);
+	copyBuffer(stageBuffer, vertexBuffer, bufferSize);
 
-	// VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+	vkDestroyBuffer(device, stageBuffer, nullptr);
+	vkFreeMemory(device, stageBufferMemory, nullptr);
 }
 
 void HelloTriangleApplication::createCommandBuffers()
@@ -1245,6 +1273,49 @@ void HelloTriangleApplication::createBuffer(VkDeviceMemory& bufferMemory, VkDevi
 
 	//
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
+}
+
+void HelloTriangleApplication::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
+{
+	// Create independent command buffer to execute copy, for this operation is emmm tiny and friendly for later optimize in this way.
+	VkCommandBufferAllocateInfo cmdAllocInfo;
+	ZeroVkStructure(cmdAllocInfo, VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO);
+	cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmdAllocInfo.commandPool = commandPool;
+	cmdAllocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer cmdBuffer;
+	if (vkAllocateCommandBuffers(device, &cmdAllocInfo, &cmdBuffer) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate command buffer..");
+	}
+
+	VkCommandBufferBeginInfo cmdBeginInfo;
+	ZeroVkStructure(cmdBeginInfo, VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
+	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	// Record
+	vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo);
+		VkBufferCopy copyRegion = {};
+		copyRegion.srcOffset = 0;
+		copyRegion.dstOffset = 0;
+		copyRegion.size = size;
+
+		vkCmdCopyBuffer(cmdBuffer, src, dst, 1, &copyRegion);
+		// vkCmdCopyAccelerationStructureNV() // Acceleration Structure?
+
+	vkEndCommandBuffer(cmdBuffer);
+
+	// Submit to command queue
+	VkSubmitInfo submitInfo;
+	ZeroVkStructure(submitInfo, VK_STRUCTURE_TYPE_SUBMIT_INFO);
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmdBuffer;
+
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	//vkQueueWaitIdle(graphicsQueue);
+
+	vkFreeCommandBuffers(device, commandPool, 1, &cmdBuffer);
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
