@@ -12,6 +12,15 @@
 #include <algorithm>
 #include <array>
 
+template <typename T>
+static inline void ZeroVkStructure(T& vkStruct, uint32_t flag)
+{
+	static_assert(offsetof(T, sType) == 0, "Assume sType is the first member in struct.");
+	static_assert(sizeof(T::sType)== sizeof(int32_t), "Assume sType is compatible with int32.");
+	(int32_t&)vkStruct.sType = flag;
+	memset(((uint8_t*)&vkStruct) + sizeof(flag), 0, sizeof(T) - sizeof(flag));
+}
+
 //// TODO: use glm as math library for now, this lib may be replaced or re-implement later.
 typedef glm::vec2 Vector2;
 typedef glm::vec3 Vector3;
@@ -228,6 +237,7 @@ protected:
 	void recreateSwapChain();
 	void cleanupSwapChain();
 
+	void createBuffer(VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperty, VkBuffer& buffer);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void draw();
@@ -1063,37 +1073,17 @@ void HelloTriangleApplication::createCommandPool()
 
 void HelloTriangleApplication::createVertexBuffer()
 {
-	VkBufferCreateInfo bufferInfo = {};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = sizeof(DummyVertices[0])* DummyVertices.size();
-	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	//bufferInfo.flags = 0;  // memory sparse in buffer
-
-	if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to create vertex buffer.");
-	}
-
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to allocate device memory.");
-	}
-
-	vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+	uint32_t size = sizeof(DummyVertices[0]) * DummyVertices.size();
+	createBuffer(vertexBufferMemory, 
+				 size,
+		         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		         vertexBuffer);
 
 	// map dummy vertices mem to gpu
 	void* data = nullptr;
-	vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
-		memcpy(data, DummyVertices.data(), static_cast<size_t>(bufferInfo.size));
+	vkMapMemory(device, vertexBufferMemory, 0, size, 0, &data);
+		memcpy(data, DummyVertices.data(), static_cast<size_t>(size));
 	vkUnmapMemory(device, vertexBufferMemory);
 
 	// VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -1225,6 +1215,36 @@ void HelloTriangleApplication::cleanupSwapChain()
 	}
 
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
+}
+
+void HelloTriangleApplication::createBuffer(VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperty, VkBuffer& buffer)
+{
+	VkBufferCreateInfo bufferInfo;
+	ZeroVkStructure(bufferInfo, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
+	bufferInfo.size = size;
+	bufferInfo.usage = usage;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // For now
+
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create buffer.");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo;
+	ZeroVkStructure(allocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, memoryProperty);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate buffer memory.");
+	}
+
+	//
+	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
