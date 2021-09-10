@@ -82,6 +82,7 @@ const std::vector<Vertex> DummyVertices = {
 	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
 
+// Be ware of the range, it will also indicated with VK flag when bind index buffer
 const std::vector<uint8_t> DummyIndices = {
 	0, 1, 2, 2, 3, 0
 };
