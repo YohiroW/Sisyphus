@@ -12,15 +12,6 @@
 #include <algorithm>
 #include <array>
 
-template <typename T>
-static inline void ZeroVkStructure(T& vkStruct, uint32_t flag)
-{
-	static_assert(offsetof(T, sType) == 0, "Assume sType is the first member in struct.");
-	static_assert(sizeof(T::sType)== sizeof(int32_t), "Assume sType is compatible with int32.");
-	(int32_t&)vkStruct.sType = flag;
-	memset(((uint8_t*)&vkStruct) + sizeof(flag), 0, sizeof(T) - sizeof(flag));
-}
-
 //// TODO: use glm as math library for now, this lib may be replaced or re-implement later.
 typedef glm::vec2 Vector2;
 typedef glm::vec3 Vector3;
@@ -33,6 +24,15 @@ const char* APPNAME = "VINCI";
 
 const int MAX_FRAMES_IN_SWAPCHAIN = 2;
 const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+template <typename T>
+static inline void ZeroVkStructure(T& vkStruct, uint32_t flag)
+{
+	static_assert(offsetof(T, sType) == 0, "Assume sType is the first member in struct.");
+	static_assert(sizeof(T::sType) == sizeof(int32_t), "Assume sType is compatible with int32.");
+	(int32_t&)vkStruct.sType = flag;
+	memset(((uint8_t*)&vkStruct) + sizeof(flag), 0, sizeof(T) - sizeof(flag));
+}
 
 struct Vertex
 {
@@ -74,6 +74,18 @@ struct Vertex
 	}
 };
 
+// interleaving vertex attributes
+const std::vector<Vertex> DummyVertices = {
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint8_t> DummyIndices = {
+	0, 1, 2, 2, 3, 0
+};
+
 struct QueueFamilyIndices
 {
 	int graphicsFamily = -1;
@@ -91,14 +103,6 @@ struct SwapChainSupportDetail
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
 };
-
-// interleaving vertex attributes
-const std::vector<Vertex> DummyVertices = {
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
-};
-
 
 #ifdef _DEBUG
 /// Validation Layer should be abstracted, but leave it here for learning usage
@@ -231,6 +235,7 @@ protected:
 	void createFrameBuffers();
 	void createCommandPool();
 	void createVertexBuffer();
+	void createIndexBuffer();
 	void createCommandBuffers();
 	void createSyncObjects();
 
@@ -573,6 +578,10 @@ private:
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
 
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
+
+
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
 #endif
@@ -622,6 +631,7 @@ private:
 		createFrameBuffers();
 		createCommandPool();
 		createVertexBuffer();
+		createIndexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -655,6 +665,9 @@ private:
 		//
 		vkDestroyBuffer(device, vertexBuffer, nullptr);
 		vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+		vkDestroyBuffer(device, indexBuffer, nullptr);
+		vkFreeMemory(device, indexBufferMemory, nullptr);
 
 		for (auto framebuffer: swapChainFramebuffers)
 		{
@@ -1100,6 +1113,7 @@ void HelloTriangleApplication::createVertexBuffer()
 		         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
 		         stageBuffer);
 
+	// Map vertex buffer data to stage buffer memory
 	vkMapMemory(device, stageBufferMemory, 0, bufferSize, 0, &data);
 		memcpy_s(data, bufferSize, DummyVertices.data(), bufferSize);
 	vkUnmapMemory(device, stageBufferMemory);
@@ -1112,6 +1126,39 @@ void HelloTriangleApplication::createVertexBuffer()
 		         vertexBuffer);
 
 	copyBuffer(stageBuffer, vertexBuffer, bufferSize);
+
+	vkDestroyBuffer(device, stageBuffer, nullptr);
+	vkFreeMemory(device, stageBufferMemory, nullptr);
+}
+
+void HelloTriangleApplication::createIndexBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(DummyIndices[0]) * DummyIndices.size();
+
+	// Transfer specified buffer to GPU
+	VkBuffer stageBuffer;
+	VkDeviceMemory stageBufferMemory;
+	void* data = nullptr;
+
+	createBuffer(stageBufferMemory,
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stageBuffer);
+
+	// Map index buffer data to stage buffer memory
+	vkMapMemory(device, stageBufferMemory, 0, bufferSize, 0, &data);
+		memcpy_s(data, bufferSize, DummyIndices.data(), bufferSize);
+	vkUnmapMemory(device, stageBufferMemory);
+
+	// Use GPU local memory, it can get better perf
+	createBuffer(indexBufferMemory,
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		indexBuffer);
+
+	copyBuffer(stageBuffer, indexBuffer, bufferSize);
 
 	vkDestroyBuffer(device, stageBuffer, nullptr);
 	vkFreeMemory(device, stageBufferMemory, nullptr);
@@ -1164,8 +1211,10 @@ void HelloTriangleApplication::createCommandBuffers()
 			VkBuffer vertexBuffers[] = { vertexBuffer };
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-	
-			vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(DummyVertices.size()), 1, 0, 0);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT8_EXT);
+
+			//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(DummyVertices.size()), 1, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(DummyIndices.size()), 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
