@@ -16,6 +16,7 @@
 typedef glm::vec2 Vector2;
 typedef glm::vec3 Vector3;
 typedef glm::vec4 Vector4;
+typedef glm::mat4 Matrix4;
 ////
 
 const uint32_t WIDTH = 800;
@@ -74,19 +75,6 @@ struct Vertex
 	}
 };
 
-// interleaving vertex attributes
-const std::vector<Vertex> DummyVertices = {
-	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-};
-
-// Be ware of the range, it will also indicated with VK flag when bind index buffer
-const std::vector<uint8_t> DummyIndices = {
-	0, 1, 2, 2, 3, 0
-};
-
 struct QueueFamilyIndices
 {
 	int graphicsFamily = -1;
@@ -103,6 +91,26 @@ struct SwapChainSupportDetail
 	VkSurfaceCapabilitiesKHR capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
+};
+
+struct UniformBuffer
+{
+    Matrix4 model;
+    Matrix4 view;
+    Matrix4 projection;
+};
+
+// interleaving vertex attributes
+const std::vector<Vertex> DummyVertices = {
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+// Be ware of the range, it will also indicated with VK flag when bind index buffer
+const std::vector<uint8_t> DummyIndices = {
+	0, 1, 2, 2, 3, 0
 };
 
 #ifdef _DEBUG
@@ -232,6 +240,7 @@ protected:
 	void createSwapChain();
 	void createImageView();
 	void createRenderPass();
+    void createDescriptorSetLayout();
 	void createGraphicsPipeline();
 	void createFrameBuffers();
 	void createCommandPool();
@@ -1045,6 +1054,11 @@ void HelloTriangleApplication::createGraphicsPipeline()
 
 	vkDestroyShaderModule(device, fsModule, nullptr);
 	vkDestroyShaderModule(device, vsModule, nullptr);
+}
+
+void createDescriptorSetLayout()
+{
+    
 }
 
 void HelloTriangleApplication::createFrameBuffers()
