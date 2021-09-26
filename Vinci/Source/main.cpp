@@ -1,7 +1,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#define GLM_FORCE_RADIANS
 #include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
 
 #include <iostream>
 #include <stdexcept>
@@ -11,6 +13,8 @@
 #include <fstream>
 #include <algorithm>
 #include <array>
+
+#include <chrono>
 
 //// TODO: use glm as math library for now, this lib may be replaced or re-implement later.
 typedef glm::vec2 Vector2;
@@ -246,6 +250,7 @@ protected:
 	void createCommandPool();
 	void createVertexBuffer();
 	void createIndexBuffer();
+	void createUniformBuffer();
 	void createCommandBuffers();
 	void createSyncObjects();
 
@@ -255,6 +260,8 @@ protected:
 	void createBuffer(VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperty, VkBuffer& buffer);
 	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
+
+	void updateUniformBuffer(uint32_t imageIdx);
 
 	void draw();
 
@@ -559,6 +566,7 @@ private:
 	VkInstance vulkanInstance;
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapChain;
+	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 	VkRenderPass renderPass;
@@ -591,6 +599,8 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
+	std::vector<VkBuffer> uniformBuffer;
+	std::vector<VkDeviceMemory> uniformBufferMemory;
 
 #ifdef _DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -637,11 +647,13 @@ private:
 		createSwapChain();
 		createImageView();
 		createRenderPass();
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createFrameBuffers();
 		createCommandPool();
 		createVertexBuffer();
 		createIndexBuffer();
+		createUniformBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -679,6 +691,16 @@ private:
 		vkDestroyBuffer(device, indexBuffer, nullptr);
 		vkFreeMemory(device, indexBufferMemory, nullptr);
 
+		for (auto ubm: uniformBufferMemory)
+		{
+			vkFreeMemory(device, ubm, nullptr);
+		}
+
+		for (auto ub: uniformBuffer)
+		{
+			vkDestroyBuffer(device, ub, nullptr);
+		}
+
 		for (auto framebuffer: swapChainFramebuffers)
 		{
 			vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -689,6 +711,7 @@ private:
 			vkDestroyImageView(device, imageView, nullptr);
 		}
 
+		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		vkDestroyRenderPass(device, renderPass, nullptr);
@@ -912,6 +935,26 @@ void HelloTriangleApplication::createRenderPass()
 	}
 }
 
+void HelloTriangleApplication::createDescriptorSetLayout()
+{
+	VkDescriptorSetLayoutBinding uboBinding = {};
+	uboBinding.binding = 0;
+	uboBinding.descriptorCount = 1;
+	uboBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboBinding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo descSetLayoutInfo;
+	ZeroVkStructure(descSetLayoutInfo, VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
+	descSetLayoutInfo.bindingCount = 1;
+	descSetLayoutInfo.pBindings = &uboBinding;
+
+	if (vkCreateDescriptorSetLayout(device, &descSetLayoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create descriptor set layout..");
+	}
+}
+
 void HelloTriangleApplication::createGraphicsPipeline()
 {
 	auto vsCode = ReadFile("../Shader/vert.spv");
@@ -1022,8 +1065,8 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	// Pipeline layout
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 0;
-	pipelineLayoutInfo.pSetLayouts = nullptr;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -1054,11 +1097,6 @@ void HelloTriangleApplication::createGraphicsPipeline()
 
 	vkDestroyShaderModule(device, fsModule, nullptr);
 	vkDestroyShaderModule(device, vsModule, nullptr);
-}
-
-void createDescriptorSetLayout()
-{
-    
 }
 
 void HelloTriangleApplication::createFrameBuffers()
@@ -1177,6 +1215,22 @@ void HelloTriangleApplication::createIndexBuffer()
 
 	vkDestroyBuffer(device, stageBuffer, nullptr);
 	vkFreeMemory(device, stageBufferMemory, nullptr);
+}
+
+void HelloTriangleApplication::createUniformBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(UniformBuffer);
+	uniformBuffer.resize(swapChainImages.size());
+	uniformBufferMemory.resize(swapChainImages.size());
+
+	for (size_t i = 0; i< swapChainImages.size(); ++i)
+	{
+		createBuffer(uniformBufferMemory[i], 
+			bufferSize, 
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+			VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD| VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 
+			uniformBuffer[i]);
+	}
 }
 
 void HelloTriangleApplication::createCommandBuffers()
@@ -1398,9 +1452,28 @@ VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<ch
 	return shaderModule;
 }
 
+void HelloTriangleApplication::updateUniformBuffer(uint32_t imageIdx)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float duration = std::chrono::duration<float, std::chrono::seconds::period>(currentTime- startTime).count();
+
+	UniformBuffer ubo = {};
+	ubo.model = glm::rotate(Matrix4(1.0f), duration* glm::radians(90.0f), Vector3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(Vector3(2.0f, 2.0f, 2.0f), Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 0.0f, 1.0f));
+	ubo.projection = glm::perspective(glm::radians(45.0f), swapChainExtent.width/ (float)swapChainExtent.height, 0.01f, 100.0f);
+	ubo.projection[1][1] *= -1.0f;	// Matrix should be row major in VK
+
+	// Map vertex buffer data to stage buffer memory
+	void* data = nullptr;
+	size_t bufferSize = sizeof(UniformBuffer);
+	vkMapMemory(device, uniformBufferMemory[imageIdx], 0, bufferSize, 0, &data);
+		memcpy_s(data, bufferSize, &ubo, bufferSize);
+	vkUnmapMemory(device, uniformBufferMemory[imageIdx]);
+}
+
 void HelloTriangleApplication::draw()
 {
-	//
 	vkWaitForFences(device, 1, &presentFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t >::max());
 
 	// Get image from swap chain
@@ -1441,6 +1514,9 @@ void HelloTriangleApplication::draw()
 	submitInfo.pSignalSemaphores = &signalSemaphore;
 
 	vkResetFences(device, 1, &presentFences[currentFrame]);
+
+	// Updated should be ahead of commands submit
+	updateUniformBuffer(imageIdx);
 
 	// Submit to graphic command queue
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, presentFences[currentFrame]) != VK_SUCCESS)
