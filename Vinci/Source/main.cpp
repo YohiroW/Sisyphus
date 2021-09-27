@@ -28,6 +28,7 @@ const uint32_t HEIGHT = 600;
 const char* APPNAME = "VINCI";
 
 const int MAX_FRAMES_IN_SWAPCHAIN = 2;
+
 const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 template <typename T>
@@ -112,6 +113,7 @@ const std::vector<Vertex> DummyVertices = {
 	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
 
+//// uint8 need extra extension to support, check if VkPhysicalDeviceIndexTypeUint8FeaturesEXT enabled.
 // Be ware of the range, it will also indicated with VK flag when bind index buffer
 const std::vector<uint8_t> DummyIndices = {
 	0, 1, 2, 2, 3, 0
@@ -437,7 +439,6 @@ protected:
 
 		return indices.IsComplete() && extSupport && swapChainAdequate;
 	}
-
 	/// Finish device validation
 
 	void createLogicalDevice()
@@ -460,6 +461,7 @@ protected:
 			queueCreateInfos.push_back(queueCreateInfo);
 		}
 
+		// Or use VkPhysicalDeviceFeatures2 to link other extensions, same as VkDeviceCreateInfo.pNext
 		VkPhysicalDeviceFeatures deviceFeature = {};
 
 		VkDeviceCreateInfo createInfo = {};
@@ -470,6 +472,14 @@ protected:
 
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
 		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+
+		// Enable uint8 as index extension
+		VkPhysicalDeviceIndexTypeUint8FeaturesEXT enableUINT8Index = { 
+			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT, 
+			nullptr, 
+			VK_TRUE 
+		};
+		createInfo.pNext = &enableUINT8Index;
 
 #ifdef _DEBUG
 		createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
@@ -773,7 +783,6 @@ void HelloTriangleApplication::createVulkanInstance(const uint32_t& glfwExtCount
 
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
 	{
-
 		debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 
 		debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -1067,8 +1076,6 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 0;
-	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 	{
@@ -1174,7 +1181,7 @@ void HelloTriangleApplication::createVertexBuffer()
 	// Use GPU local memory, it can get better perf
 	createBuffer(vertexBufferMemory,
 		         bufferSize,
-		         VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		         vertexBuffer);
 
@@ -1207,7 +1214,7 @@ void HelloTriangleApplication::createIndexBuffer()
 	// Use GPU local memory, it can get better perf
 	createBuffer(indexBufferMemory,
 		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		indexBuffer);
 
@@ -1280,7 +1287,9 @@ void HelloTriangleApplication::createCommandBuffers()
 			VkBuffer vertexBuffers[] = { vertexBuffer };
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+			//// uint8 need extra extension to support, check if VkPhysicalDeviceIndexTypeUint8FeaturesEXT enabled.
 			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT8_EXT);
+			//vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
 			//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(DummyVertices.size()), 1, 0, 0);
 			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(DummyIndices.size()), 1, 0, 0, 0);
