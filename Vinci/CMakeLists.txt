@@ -26,6 +26,8 @@ include_directories("$ENV{VULKAN_SDK}/Include/")
 include_directories("${thirdPartyPath}/glfw-3.3.4/include")
 include_directories("${thirdPartyPath}/fbxsdk/include")
 include_directories("${thirdPartyPath}/glm")
+include_directories("${thirdPartyPath}/stb_image")
+
 
 # add referenced library		 		 
 set(libs 
