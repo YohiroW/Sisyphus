@@ -5,6 +5,9 @@
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -173,6 +176,7 @@ void destroyDebugUtilsMessengerEXT(VkInstance instance,
 	VkDebugUtilsMessengerEXT debugMessenger,
 	const VkAllocationCallbacks* pAllocator)
 {
+
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func != nullptr)
 	{
@@ -250,6 +254,7 @@ protected:
 	void createGraphicsPipeline();
 	void createFrameBuffers();
 	void createCommandPool();
+	void createTextureImage();
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createUniformBuffer();
@@ -263,6 +268,9 @@ protected:
 
 	void createBuffer(VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperty, VkBuffer& buffer);
 	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+
+	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image);
+
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void updateUniformBuffer(uint32_t imageIdx);
@@ -666,6 +674,7 @@ private:
 		createGraphicsPipeline();
 		createFrameBuffers();
 		createCommandPool();
+		createTextureImage();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffer();
@@ -1142,6 +1151,51 @@ void HelloTriangleApplication::createCommandPool()
 	}
 }
 
+void HelloTriangleApplication::createTextureImage()
+{
+	int width, height, channels;
+	stbi_uc* pixels = stbi_load("Texture/placeholder.png", &width, &height, &channels, STBI_rgb_alpha);
+
+	VkDeviceSize imageSize = width * height * 4;
+
+	if (!pixels)
+	{
+		throw std::runtime_error("Failed to load external texture.");
+	}
+
+	// Create buffer for texture
+	VkBuffer stageBuffer;
+	VkDeviceMemory stagingBufferMemory;
+
+	createBuffer(stagingBufferMemory,
+		imageSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stageBuffer);
+
+	// Copy texture data to stage buffer 
+	void* data;
+	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+		memcpy_s(data, imageSize, pixels, imageSize);
+	vkUnmapMemory(device, stagingBufferMemory);
+
+	stbi_image_free(data);
+
+
+	VkImage image;
+	VkDeviceMemory imageMemory;
+	
+	createImage(
+		width, 
+		height, 
+		VK_FORMAT_R8G8B8A8_UNORM, 
+		VK_IMAGE_TILING_OPTIMAL, 
+		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		imageMemory,
+		image);
+
+}
+
 void HelloTriangleApplication::createVertexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(DummyVertices[0]) * DummyVertices.size();
@@ -1514,6 +1568,46 @@ void HelloTriangleApplication::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSi
 	vkQueueWaitIdle(graphicsQueue);
 
 	vkFreeCommandBuffers(device, commandPool, 1, &cmdBuffer);
+}
+
+void HelloTriangleApplication::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image)
+{
+	VkImageCreateInfo imageInfo;
+	ZeroVkStructure(imageInfo, VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = width;
+	imageInfo.extent.height = height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = format;
+	imageInfo.tiling = tiling;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.usage = usage;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.flags = 0;
+
+	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create image.");
+	}
+
+	// Allocate image memory
+	VkMemoryRequirements imageMemRequirements;
+	vkGetImageMemoryRequirements(device, image, &imageMemRequirements);
+
+	VkMemoryAllocateInfo allocInfo;
+	ZeroVkStructure(allocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+	allocInfo.allocationSize = imageMemRequirements.size;
+	allocInfo.memoryTypeIndex = FindMemoryType(imageMemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate image memory");
+	}
+
+	vkBindImageMemory(device, image, memory, 0);
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
