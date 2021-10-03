@@ -271,6 +271,9 @@ protected:
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image);
 
+	VkCommandBuffer beginSingleTimeCommands();
+	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	void updateUniformBuffer(uint32_t imageIdx);
@@ -1529,25 +1532,8 @@ void HelloTriangleApplication::createBuffer(VkDeviceMemory& bufferMemory, VkDevi
 
 void HelloTriangleApplication::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 {
-	// Create independent command buffer to execute copy, for this operation is emmm tiny and friendly for later optimize in this way.
-	VkCommandBufferAllocateInfo cmdAllocInfo;
-	ZeroVkStructure(cmdAllocInfo, VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO);
-	cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdAllocInfo.commandPool = commandPool;
-	cmdAllocInfo.commandBufferCount = 1;
+	VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
 
-	VkCommandBuffer cmdBuffer;
-	if (vkAllocateCommandBuffers(device, &cmdAllocInfo, &cmdBuffer) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to allocate command buffer..");
-	}
-
-	VkCommandBufferBeginInfo cmdBeginInfo;
-	ZeroVkStructure(cmdBeginInfo, VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
-	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	// Record
-	vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo);
 		VkBufferCopy copyRegion = {};
 		copyRegion.srcOffset = 0;
 		copyRegion.dstOffset = 0;
@@ -1555,19 +1541,8 @@ void HelloTriangleApplication::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSi
 
 		vkCmdCopyBuffer(cmdBuffer, src, dst, 1, &copyRegion);
 		// vkCmdCopyAccelerationStructureNV() // Acceleration Structure?
-
-	vkEndCommandBuffer(cmdBuffer);
-
-	// Submit to command queue
-	VkSubmitInfo submitInfo;
-	ZeroVkStructure(submitInfo, VK_STRUCTURE_TYPE_SUBMIT_INFO);
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuffer;
-
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(graphicsQueue);
-
-	vkFreeCommandBuffers(device, commandPool, 1, &cmdBuffer);
+	
+	endSingleTimeCommands(cmdBuffer);
 }
 
 void HelloTriangleApplication::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image)
@@ -1608,6 +1583,39 @@ void HelloTriangleApplication::createImage(uint32_t width, uint32_t height, VkFo
 	}
 
 	vkBindImageMemory(device, image, memory, 0);
+}
+
+VkCommandBuffer HelloTriangleApplication::beginSingleTimeCommands()
+{
+	VkCommandBufferAllocateInfo cmdAllocInfo;
+	ZeroVkStructure(cmdAllocInfo, VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO);
+	cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmdAllocInfo.commandPool = commandPool;
+	cmdAllocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(device, &cmdAllocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo cmdBeginInfo;
+	ZeroVkStructure(cmdBeginInfo, VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
+	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	return commandBuffer;
+}
+
+void HelloTriangleApplication::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+{
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo;
+	ZeroVkStructure(submitInfo, VK_STRUCTURE_TYPE_SUBMIT_INFO);
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(graphicsQueue);
+
+	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
