@@ -270,9 +270,12 @@ protected:
 	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image);
+	void copyBuffer2Image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout preLayout, VkImageLayout targetLayout);
 
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
@@ -1585,6 +1588,26 @@ void HelloTriangleApplication::createImage(uint32_t width, uint32_t height, VkFo
 	vkBindImageMemory(device, image, memory, 0);
 }
 
+void HelloTriangleApplication::copyBuffer2Image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+{
+	VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
+
+	VkBufferImageCopy copyRegion = {};
+	copyRegion.bufferOffset = 0;
+	copyRegion.bufferImageHeight = 0;
+	copyRegion.bufferRowLength = 0;
+	copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copyRegion.imageSubresource.mipLevel = 0;
+	copyRegion.imageSubresource.baseArrayLayer = 0;
+	copyRegion.imageSubresource.layerCount = 1;
+	copyRegion.imageExtent = { width, height, 1 };
+	copyRegion.imageOffset = { 0, 0 };
+
+	vkCmdCopyBufferToImage(cmdBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+	endSingleTimeCommands(cmdBuffer);
+}
+
 VkCommandBuffer HelloTriangleApplication::beginSingleTimeCommands()
 {
 	VkCommandBufferAllocateInfo cmdAllocInfo;
@@ -1616,6 +1639,40 @@ void HelloTriangleApplication::endSingleTimeCommands(VkCommandBuffer commandBuff
 	vkQueueWaitIdle(graphicsQueue);
 
 	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+}
+
+void HelloTriangleApplication::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout preLayout, VkImageLayout targetLayout)
+{
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+	VkImageMemoryBarrier barrier;
+	ZeroVkStructure(barrier, VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER);
+	barrier.oldLayout = preLayout;
+	barrier.newLayout = targetLayout;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
+
+	vkCmdPipelineBarrier(commandBuffer,
+		0, // src stage mask
+		0, // dst stage mask
+		0, // dependency flag
+		0, // memory barrier count
+		nullptr, // memory barrier
+		0, // buffer memory barrier count
+		nullptr, // buffer memory barrier
+		1, // image memory barrier count
+		&barrier // image memory barrier
+		);
+
+	endSingleTimeCommands(commandBuffer);
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
