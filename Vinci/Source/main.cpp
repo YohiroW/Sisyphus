@@ -628,6 +628,9 @@ private:
 	std::vector<VkBuffer> uniformBuffer;
 	std::vector<VkDeviceMemory> uniformBufferMemory;
 
+	VkImage image;
+	VkDeviceMemory imageMemory;
+
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
 
@@ -722,6 +725,9 @@ private:
 
 		vkDestroyBuffer(device, indexBuffer, nullptr);
 		vkFreeMemory(device, indexBufferMemory, nullptr);
+
+		vkDestroyImage(device, image, nullptr);
+		vkFreeMemory(device, imageMemory, nullptr);
 
 		for (auto framebuffer: swapChainFramebuffers)
 		{
@@ -1160,7 +1166,7 @@ void HelloTriangleApplication::createCommandPool()
 void HelloTriangleApplication::createTextureImage()
 {
 	int width, height, channels;
-	stbi_uc* pixels = stbi_load("Texture/placeholder.png", &width, &height, &channels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load("../Texture/placeholder.jpg", &width, &height, &channels, STBI_rgb_alpha);
 
 	VkDeviceSize imageSize = width * height * 4;
 
@@ -1186,10 +1192,6 @@ void HelloTriangleApplication::createTextureImage()
 	vkUnmapMemory(device, stagingBufferMemory);
 
 	stbi_image_free(data);
-
-
-	VkImage image;
-	VkDeviceMemory imageMemory;
 	
 	createImage(
 		width, 
@@ -1200,6 +1202,12 @@ void HelloTriangleApplication::createTextureImage()
 		imageMemory,
 		image);
 
+	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		copyBuffer2Image(stageBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	vkDestroyBuffer(device, stageBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
 void HelloTriangleApplication::createVertexBuffer()
@@ -1657,12 +1665,34 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image, VkFormat for
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.layerCount = 1;
 	barrier.subresourceRange.levelCount = 1;
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = 0;
+
+	//
+	VkPipelineStageFlags srcStage;
+	VkPipelineStageFlags dstStage;
+
+	if (preLayout == VK_IMAGE_LAYOUT_UNDEFINED && targetLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (preLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && targetLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else
+	{
+		throw std::invalid_argument("Incorrect layout transition.");
+	}
+
 
 	vkCmdPipelineBarrier(commandBuffer,
-		0, // src stage mask
-		0, // dst stage mask
+		srcStage, // src stage mask
+		dstStage, // dst stage mask
 		0, // dependency flag
 		0, // memory barrier count
 		nullptr, // memory barrier
