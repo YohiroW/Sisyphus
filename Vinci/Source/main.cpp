@@ -1191,7 +1191,7 @@ void HelloTriangleApplication::createTextureImage()
 		memcpy_s(data, imageSize, pixels, imageSize);
 	vkUnmapMemory(device, stagingBufferMemory);
 
-	stbi_image_free(data);
+	stbi_image_free(pixels);
 	
 	createImage(
 		width, 
