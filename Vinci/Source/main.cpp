@@ -248,13 +248,15 @@ protected:
 	// Refactor later
 	void createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions);
 	void createSwapChain();
-	void createImageView();
+	void createSwapChainImageView();
 	void createRenderPass();
     void createDescriptorSetLayout();
 	void createGraphicsPipeline();
 	void createFrameBuffers();
 	void createCommandPool();
 	void createTextureImage();
+	void createTextureImageView();
+	void createTextureSampler();
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createUniformBuffer();
@@ -276,6 +278,8 @@ protected:
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout preLayout, VkImageLayout targetLayout);
+
+	VkImageView createImageView(VkImage image, VkFormat format);
 
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
@@ -479,6 +483,7 @@ protected:
 
 		// Or use VkPhysicalDeviceFeatures2 to link other extensions, same as VkDeviceCreateInfo.pNext
 		VkPhysicalDeviceFeatures deviceFeature = {};
+		deviceFeature.samplerAnisotropy = VK_TRUE;
 
 		VkDeviceCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -630,6 +635,8 @@ private:
 
 	VkImage image;
 	VkDeviceMemory imageMemory;
+	VkImageView imageView;
+	VkSampler defaultSampler;
 
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
@@ -677,13 +684,15 @@ private:
 		enumPhysicalDevice();
 		createLogicalDevice();
 		createSwapChain();
-		createImageView();
+		createSwapChainImageView();
 		createRenderPass();
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createFrameBuffers();
 		createCommandPool();
 		createTextureImage();
+		createTextureImageView();
+		createTextureSampler();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffer();
@@ -711,6 +720,9 @@ private:
 		destroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, nullptr);
 #endif
 		cleanupSwapChain();
+
+		vkDestroySampler(device, defaultSampler, nullptr);
+		vkDestroyImageView(device, imageView, nullptr);
 
 		for (size_t i = 0; i< MAX_FRAMES_IN_SWAPCHAIN; ++i)
 		{
@@ -890,7 +902,7 @@ void HelloTriangleApplication::createSwapChain()
 	swapChainExtent = swapExtent;
 }
 
-void HelloTriangleApplication::createImageView()
+void HelloTriangleApplication::createSwapChainImageView()
 {
 	size_t swapChainImageCount = swapChainImages.size();
 	swapChainImageViews.resize(swapChainImageCount);
@@ -1210,6 +1222,40 @@ void HelloTriangleApplication::createTextureImage()
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
+void HelloTriangleApplication::createTextureImageView()
+{
+	imageView = createImageView(image, VK_FORMAT_R8G8B8A8_UNORM);
+
+
+
+}
+
+void HelloTriangleApplication::createTextureSampler()
+{
+	VkSamplerCreateInfo samplerInfo;
+	ZeroVkStructure(samplerInfo, VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.anisotropyEnable = VK_TRUE;
+	samplerInfo.maxAnisotropy = 16;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0;
+	samplerInfo.minLod = 0; // float why?
+	samplerInfo.maxLod = 0;
+
+	if (vkCreateSampler(device, &samplerInfo, nullptr, &defaultSampler) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create default sampler");
+	}
+}
+
 void HelloTriangleApplication::createVertexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(DummyVertices[0]) * DummyVertices.size();
@@ -1471,7 +1517,7 @@ void HelloTriangleApplication::recreateSwapChain()
 	cleanupSwapChain();
 
 	createSwapChain();
-	createImageView();
+	createSwapChainImageView();
 	createRenderPass();
 	createGraphicsPipeline();
 	createFrameBuffers();
@@ -1703,6 +1749,29 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image, VkFormat for
 		);
 
 	endSingleTimeCommands(commandBuffer);
+}
+
+VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format)
+{
+	VkImageView view;
+
+	VkImageViewCreateInfo imageViewInfo;
+	ZeroVkStructure(imageViewInfo, VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
+	imageViewInfo.image = image;
+	imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewInfo.format = format;
+	imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewInfo.subresourceRange.baseMipLevel = 0;
+	imageViewInfo.subresourceRange.layerCount = 1;
+	imageViewInfo.subresourceRange.levelCount = 1;
+
+	if (vkCreateImageView(device, &imageViewInfo, nullptr, &view) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create image view.");
+	}
+
+	return view;
 }
 
 VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<char>& code)
