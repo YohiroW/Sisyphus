@@ -1372,11 +1372,9 @@ void HelloTriangleApplication::createDescriptorPool()
 	poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSize[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 
-
-
 	VkDescriptorPoolCreateInfo descPoolInfo;
 	ZeroVkStructure(descPoolInfo, VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO);
-	descPoolInfo.poolSizeCount = 1;
+	descPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSize.size());
 	descPoolInfo.pPoolSizes = poolSize.data(); 
 	descPoolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
 
@@ -1436,7 +1434,8 @@ void HelloTriangleApplication::createDescriptorSet()
 		descriptorWrites[1].descriptorCount = 1;
 		descriptorWrites[1].pImageInfo = &descImageInfo;
 
-		vkUpdateDescriptorSets(device, 1, descriptorWrites.data(), 0, nullptr);
+		// Multiple descriptor need update
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
 }
 
