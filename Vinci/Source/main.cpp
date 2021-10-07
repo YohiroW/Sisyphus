@@ -725,6 +725,8 @@ private:
 		vkDestroySampler(device, defaultSampler, nullptr);
 		vkDestroyImageView(device, imageView, nullptr);
 
+		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
 		for (size_t i = 0; i< MAX_FRAMES_IN_SWAPCHAIN; ++i)
 		{
 			vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
@@ -742,28 +744,13 @@ private:
 		vkDestroyImage(device, image, nullptr);
 		vkFreeMemory(device, imageMemory, nullptr);
 
-		for (auto framebuffer: swapChainFramebuffers)
-		{
-			vkDestroyFramebuffer(device, framebuffer, nullptr);
-		}
-
-		for (auto imageView: swapChainImageViews)
-		{
-			vkDestroyImageView(device, imageView, nullptr);
-		}
-
-		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		vkDestroyCommandPool(device, commandPool, nullptr);
-		vkDestroyRenderPass(device, renderPass, nullptr);
-		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-		vkDestroySwapchainKHR(device, swapChain, nullptr);
+
 		vkDestroyDevice(device, nullptr);
 		vkDestroySurfaceKHR(vulkanInstance, surface, nullptr);
 		vkDestroyInstance(vulkanInstance, nullptr);
 
 		glfwDestroyWindow(window);
-
 		glfwTerminate();
 	}
 };
