@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects: enable
 
-layout(location= 0) in vec2 inPosition;
+layout(location= 0) in vec3 inPosition;
 layout(location= 1) in vec3 inColor;
 layout(location= 2) in vec2 inUV;
 
@@ -22,7 +22,7 @@ out gl_PerVertex
 
 void main()
 {
-    gl_Position = proj* view* model* vec4(inPosition, 0.0f, 1.0f);
+    gl_Position = UniformBufferObject.proj* UniformBufferObject.view* UniformBufferObject.model* vec4(inPosition, 1.0f);
     fragColor = inColor;
     fragUV = inUV;
 }

@@ -53,7 +53,7 @@ struct Vertex
 	//
 	//}
 
-	Vector2 position;
+	Vector3 position;
 	Vector3 color;
 	Vector2 texCoord;
 	//static VkVertexInputBindingDescription InputDescription;
@@ -111,23 +111,29 @@ struct UniformBuffer
 
 // interleaving vertex attributes
 const std::vector<Vertex> DummyVertices = {
-	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-	{{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-	{{ 0.5f, 0.5f }, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-	{{-0.5f, 0.5f }, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+	{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	{{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	{{ 0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+	{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	{{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	{{ 0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 };
 
 //// uint8 need extra extension to support, check if VkPhysicalDeviceIndexTypeUint8FeaturesEXT enabled.
 // Be ware of the range, it will also indicated with VK flag when bind index buffer
 const std::vector<uint8_t> DummyIndices = {
-	0, 1, 2, 2, 3, 0
+	0, 1, 2, 2, 3, 0,
+	4, 5, 6, 6, 7, 4
 };
 
 #ifdef _DEBUG
 /// Validation Layer should be abstracted, but leave it here for learning usage
 /// We can learn how to make validation configuration by vk_layer_settings.txt
 /// Currently use default setting in this solution. 
-const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
+const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_RENDERDOC_Capture"};
 
 bool checkValidationLayerSupport()
 {
