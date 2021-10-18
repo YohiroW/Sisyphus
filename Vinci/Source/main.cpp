@@ -1649,6 +1649,10 @@ void HelloTriangleApplication::cleanupSwapChain()
 		vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
 	}
 
+	vkDestroyImageView(device, depthImageView, nullptr);
+	vkDestroyImage(device, depthImage, nullptr);
+	vkFreeMemory(device, depthImageMemory, nullptr);
+
 	vkFreeCommandBuffers(device, commandPool, commandBuffers.size(), commandBuffers.data());
 
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
