@@ -50,19 +50,18 @@ add_executable(Vinci "${srcs}")
 target_link_libraries(Vinci "${libs}")
 
 # Compile shaders when finish build
-add_custom_command(
-    TARGET Vinci
-    POST_BUILD
-    COMMAND "$(OutDir)..\\..\\Shader\\CompileShader.bat")
+# add_custom_command(
+#     TARGET Vinci
+#     POST_BUILD
+#     COMMAND $(ConfigurationName)..\\..\\Assets\\Shader\\CompileShader.bat)
+#    COMMENT "Compiling shaders...")
 
 # Add custom command to copy data needed
-add_custom_command(
-    TARGET Vinci
-    POST_BUILD
-    COMMAND if not exist "$(OutDir)renderdoc.dll"
-    copy /Y
-    "$(OutDir)..\\..\\ThirdParty\\RenderDoc\\renderdoc.dll"
-    "$(OutDir)")
+# add_custom_command(
+#     TARGET Vinci
+#     POST_BUILD
+#     COMMAND if not exist "$(ConfigurationName)renderdoc.dll" copy /Y "$(OutDir)..\\..\\ThirdParty\\RenderDoc\\renderdoc.dll" "$(OutDir)")
+#    COMMENT "Copied renderdoc dll to specified output folder...")
 
 # working directories
 # set_target_properties(Vinci PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/Assets")
