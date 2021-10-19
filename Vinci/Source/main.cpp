@@ -1061,8 +1061,8 @@ void HelloTriangleApplication::createDescriptorSetLayout()
 
 void HelloTriangleApplication::createGraphicsPipeline()
 {
-	auto vsCode = ReadFile("../Shader/vert.spv");
-	auto fsCode = ReadFile("../Shader/frag.spv");
+	auto vsCode = ReadFile("../Assets/Shader/vert.spv");
+	auto fsCode = ReadFile("../Assets/Shader/frag.spv");
 
 	VkShaderModule vsModule = createShaderModule(vsCode);
 	VkShaderModule fsModule = createShaderModule(fsCode);
@@ -1254,7 +1254,7 @@ void HelloTriangleApplication::createCommandPool()
 void HelloTriangleApplication::createTextureImage()
 {
 	int width, height, channels;
-	stbi_uc* pixels = stbi_load("../Texture/placeholder.jpg", &width, &height, &channels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load("../Assets/Texture/placeholder.jpg", &width, &height, &channels, STBI_rgb_alpha);
 
 	VkDeviceSize imageSize = width * height * 4;
 
