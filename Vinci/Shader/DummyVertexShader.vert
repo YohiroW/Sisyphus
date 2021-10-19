@@ -13,7 +13,7 @@ layout(binding = 0) uniform UniformBufferObject
 	mat4 model;
 	mat4 view;
 	mat4 proj;
-};
+}ubo;
 
 out gl_PerVertex
 {
@@ -22,7 +22,7 @@ out gl_PerVertex
 
 void main()
 {
-    gl_Position = UniformBufferObject.proj* UniformBufferObject.view* UniformBufferObject.model* vec4(inPosition, 1.0f);
+    gl_Position = ubo.proj* ubo.view* ubo.model* vec4(inPosition, 1.0f);
     fragColor = inColor;
     fragUV = inUV;
 }
