@@ -23,11 +23,13 @@ set(thirdPartyPath "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 # include directories
 include_directories("$ENV{VULKAN_SDK}/Include/")
+
+# 3rd parties
 include_directories("${thirdPartyPath}/glfw-3.3.4/include")
 include_directories("${thirdPartyPath}/fbxsdk/include")
 include_directories("${thirdPartyPath}/glm")
 include_directories("${thirdPartyPath}/stb_image")
-
+include_directories("${thirdPartyPath}/tinyobjloader")
 
 # add referenced library		 		 
 set(libs 
