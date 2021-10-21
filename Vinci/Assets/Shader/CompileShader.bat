@@ -9,7 +9,7 @@ REM ## -o: output file
 REM glslangValidator -V -x -o glsl_shader.frag.u32 glsl_shader.frag
 REM glslangValidator -V -x -o glsl_shader.vert.u32 glsl_shader.vert
 
-%VULKAN_SDK%/Bin/glslangValidator.exe -V -x DummyVertexShader.vert
-%VULKAN_SDK%/Bin/glslangValidator.exe -V -x DummyPixelShader.frag
+%VULKAN_SDK%/Bin/glslangValidator.exe -V DummyVertexShader.vert
+%VULKAN_SDK%/Bin/glslangValidator.exe -V DummyPixelShader.frag
 
 pause

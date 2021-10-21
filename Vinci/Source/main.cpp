@@ -31,6 +31,12 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const char* APPNAME = "VINCI";
 
+const char* DUMMY_VERTEX_SHADER = "../Assets/Shader/vert.spv";
+const char* DUMMY_FRAGMENT_SHADER = "../Assets/Shader/frag.spv";
+const char* DUMMY_MESH = "../Assets/Mesh/TheRocket.obj";
+const char* DUMMY_MESH_DIFFUSE = "../Assets/Mesh/T_TheRocket_D.png";
+const char* PLACEHOLDER_TEXTURE = "../Assets/Texture/placeholder.jpg";
+
 const int MAX_FRAMES_IN_SWAPCHAIN = 2;
 
 const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -1061,8 +1067,8 @@ void HelloTriangleApplication::createDescriptorSetLayout()
 
 void HelloTriangleApplication::createGraphicsPipeline()
 {
-	auto vsCode = ReadFile("../Assets/Shader/vert.spv");
-	auto fsCode = ReadFile("../Assets/Shader/frag.spv");
+	auto vsCode = ReadFile(DUMMY_VERTEX_SHADER);
+	auto fsCode = ReadFile(DUMMY_FRAGMENT_SHADER);
 
 	VkShaderModule vsModule = createShaderModule(vsCode);
 	VkShaderModule fsModule = createShaderModule(fsCode);
@@ -1254,8 +1260,7 @@ void HelloTriangleApplication::createCommandPool()
 void HelloTriangleApplication::createTextureImage()
 {
 	int width, height, channels;
-	stbi_uc* pixels = stbi_load("../Assets/Texture/placeholder.jpg", &width, &height, &channels, STBI_rgb_alpha);
-
+	stbi_uc* pixels = stbi_load(PLACEHOLDER_TEXTURE, &width, &height, &channels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = width * height * 4;
 
 	if (!pixels)
