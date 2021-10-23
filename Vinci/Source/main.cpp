@@ -9,6 +9,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -31,11 +34,11 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const char* APPNAME = "VINCI";
 
-const char* DUMMY_VERTEX_SHADER = "../Assets/Shader/vert.spv";
+const char* DUMMY_VERTEX_SHADER   = "../Assets/Shader/vert.spv";
 const char* DUMMY_FRAGMENT_SHADER = "../Assets/Shader/frag.spv";
-const char* DUMMY_MESH = "../Assets/Mesh/TheRocket.obj";
-const char* DUMMY_MESH_DIFFUSE = "../Assets/Mesh/T_TheRocket_D.png";
-const char* PLACEHOLDER_TEXTURE = "../Assets/Texture/placeholder.jpg";
+const char* DUMMY_MESH            = "../Assets/Mesh/TheRocket.obj";
+const char* DUMMY_MESH_DIFFUSE    = "../Assets/Mesh/T_TheRocket_D.png";
+const char* PLACEHOLDER_TEXTURE   = "../Assets/Texture/placeholder.jpg";
 
 const int MAX_FRAMES_IN_SWAPCHAIN = 2;
 
@@ -91,6 +94,12 @@ struct Vertex
 	}
 };
 
+// Global default mesh data defination
+std::vector<Vertex> gMeshVertices;
+std::vector<uint32_t> gMeshIndices;
+VkBuffer gMeshVertexBuffer;
+VkDeviceMemory gMeshVertexBufferMemory;
+
 struct QueueFamilyIndices
 {
 	int graphicsFamily = -1;
@@ -117,23 +126,23 @@ struct UniformBuffer
 };
 
 // interleaving vertex attributes
-const std::vector<Vertex> DummyVertices = {
-	{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	{{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	{{ 0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-	{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+std::vector<Vertex> DummyVertices = {
+	//{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	//{{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	//{{ 0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	//{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 
-	{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	{{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	{{ 0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+	//{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	//{{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	//{{ 0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	//{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 };
 
 //// uint8 need extra extension to support, check if VkPhysicalDeviceIndexTypeUint8FeaturesEXT enabled.
 // Be ware of the range, it will also indicated with VK flag when bind index buffer
-const std::vector<uint8_t> DummyIndices = {
-	0, 1, 2, 2, 3, 0,
-	4, 5, 6, 6, 7, 4
+std::vector<uint32_t> DummyIndices = {
+	//0, 1, 2, 2, 3, 0,
+	//4, 5, 6, 6, 7, 4
 };
 
 #ifdef _DEBUG
@@ -261,6 +270,8 @@ public:
 
 	VkFormat isFormatSupport(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags feature);
 	VkFormat getPreferredDepthFormat();
+
+	void loadMesh();
 
 public:
 	// Indicate if we need recreate swap chain
@@ -722,6 +733,7 @@ private:
 		createTextureImage();
 		createTextureImageView();
 		createTextureSampler();
+		loadMesh();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffer();
@@ -822,6 +834,50 @@ VkFormat HelloTriangleApplication::getPreferredDepthFormat()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
 	);
+}
+
+void HelloTriangleApplication::loadMesh()
+{
+	tinyobj::attrib_t attribute;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string err, warn;
+
+	if (!tinyobj::LoadObj(&attribute, &shapes, &materials, &warn, &err, DUMMY_MESH))
+	{
+		throw std::runtime_error(err);
+	}
+
+	for (const auto& shape: shapes)
+	{
+		for (const auto& index: shape.mesh.indices)
+		{
+			Vertex vert = {};
+
+			// index
+			//  |-- vertex
+			//  |-- texcoord
+			//  |-- normal
+
+			vert.position = {
+				attribute.vertices[3* index.vertex_index+ 0],
+				attribute.vertices[3* index.vertex_index+ 1],
+				attribute.vertices[3* index.vertex_index+ 2]
+			};
+
+			vert.texCoord = {
+				attribute.texcoords[2* index.texcoord_index+ 0],
+				//attribute.texcoords[2* index.texcoord_index+ 1]
+				1.0f- attribute.texcoords[2* index.texcoord_index+ 1]
+			};
+
+			vert.color = { 1.0f, 1.0f, 1.0f };
+
+			// Bind to render resources
+			DummyVertices.push_back(vert);
+			DummyIndices.push_back(DummyIndices.size());
+		}
+	}
 }
 
 void HelloTriangleApplication::createVulkanInstance(const uint32_t& glfwExtCount, const char** glfwExtensions)
@@ -1260,7 +1316,7 @@ void HelloTriangleApplication::createCommandPool()
 void HelloTriangleApplication::createTextureImage()
 {
 	int width, height, channels;
-	stbi_uc* pixels = stbi_load(PLACEHOLDER_TEXTURE, &width, &height, &channels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load(DUMMY_MESH_DIFFUSE, &width, &height, &channels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = width * height * 4;
 
 	if (!pixels)
@@ -1561,8 +1617,8 @@ void HelloTriangleApplication::createCommandBuffers()
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 			//// uint8 need extra extension to support, check if VkPhysicalDeviceIndexTypeUint8FeaturesEXT enabled.
-			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT8_EXT);
-			//vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			//vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT8_EXT);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
