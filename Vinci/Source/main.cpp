@@ -677,6 +677,10 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
+	// mipmaps
+	uint32_t mipLevels;
+	VkImage textureImage;
+
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
 
@@ -1318,6 +1322,8 @@ void HelloTriangleApplication::createTextureImage()
 	int width, height, channels;
 	stbi_uc* pixels = stbi_load(DUMMY_MESH_DIFFUSE, &width, &height, &channels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = width * height * 4;
+
+	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) +1;
 
 	if (!pixels)
 	{
