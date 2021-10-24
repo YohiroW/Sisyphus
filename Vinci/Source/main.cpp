@@ -306,15 +306,15 @@ protected:
 	void createBuffer(VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperty, VkBuffer& buffer);
 	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
-	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image);
+	void createImage(uint32_t width, uint32_t height, uint32_t miplevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image);
 	void copyBuffer2Image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
-	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout preLayout, VkImageLayout targetLayout);
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout preLayout, VkImageLayout targetLayout, uint32_t miplevels = 1);
 
-	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT);
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT, uint32_t miplevels = 1);
 
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
@@ -1351,13 +1351,14 @@ void HelloTriangleApplication::createTextureImage()
 	createImage(
 		width, 
 		height, 
+		mipLevels,
 		VK_FORMAT_R8G8B8A8_UNORM, 
 		VK_IMAGE_TILING_OPTIMAL, 
 		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		imageMemory,
 		image);
 
-	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
 		copyBuffer2Image(stageBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -1367,7 +1368,7 @@ void HelloTriangleApplication::createTextureImage()
 
 void HelloTriangleApplication::createTextureImageView()
 {
-	imageView = createImageView(image, VK_FORMAT_R8G8B8A8_UNORM);
+	imageView = createImageView(image, VK_FORMAT_R8G8B8A8_UNORM, mipLevels);
 
 
 
@@ -1670,6 +1671,7 @@ void HelloTriangleApplication::createDepthResource()
 
 	createImage(swapChainExtent.width, 
 		        swapChainExtent.height, 
+				1,
 		        depthFormat, 
 		        VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1787,7 +1789,7 @@ void HelloTriangleApplication::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSi
 	endSingleTimeCommands(cmdBuffer);
 }
 
-void HelloTriangleApplication::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image)
+void HelloTriangleApplication::createImage(uint32_t width, uint32_t height, uint32_t miplevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image)
 {
 	VkImageCreateInfo imageInfo;
 	ZeroVkStructure(imageInfo, VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
@@ -1795,7 +1797,7 @@ void HelloTriangleApplication::createImage(uint32_t width, uint32_t height, VkFo
 	imageInfo.extent.width = width;
 	imageInfo.extent.height = height;
 	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = 1;
+	imageInfo.mipLevels = miplevels;
 	imageInfo.arrayLayers = 1;
 	imageInfo.format = format;
 	imageInfo.tiling = tiling;
@@ -1882,7 +1884,7 @@ void HelloTriangleApplication::endSingleTimeCommands(VkCommandBuffer commandBuff
 	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
-void HelloTriangleApplication::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout preLayout, VkImageLayout targetLayout)
+void HelloTriangleApplication::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout preLayout, VkImageLayout targetLayout, uint32_t miplevels)
 {
 	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -1896,7 +1898,7 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image, VkFormat for
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.layerCount = 1;
-	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.levelCount = miplevels;
 
 	if (targetLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) 
 	{
@@ -1959,7 +1961,7 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image, VkFormat for
 	endSingleTimeCommands(commandBuffer);
 }
 
-VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlag)
+VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlag, uint32_t miplevels)
 {
 	VkImageView view;
 
@@ -1972,7 +1974,7 @@ VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat fo
 	imageViewInfo.subresourceRange.baseArrayLayer = 0;
 	imageViewInfo.subresourceRange.baseMipLevel = 0;
 	imageViewInfo.subresourceRange.layerCount = 1;
-	imageViewInfo.subresourceRange.levelCount = 1;
+	imageViewInfo.subresourceRange.levelCount = miplevels;
 
 	if (vkCreateImageView(device, &imageViewInfo, nullptr, &view) != VK_SUCCESS)
 	{
