@@ -863,6 +863,7 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 
 	int32_t mipWidth = width;
 	int32_t mipHeight = height;
+
 	for (uint32_t i= 1; i< miplevels; ++i) // begin from 1
 	{
 		barrier.subresourceRange.baseMipLevel = i - 1;
@@ -888,10 +889,10 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 		blit.dstOffsets[1] = { mipWidth> 1? mipWidth/2: 1, 
 			                   mipHeight> 1? mipHeight/2: 1,
 			                   1 };
-		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.srcSubresource.baseArrayLayer = 0;
-		blit.srcSubresource.layerCount = 1;
-		blit.srcSubresource.mipLevel = i;  // miplevel to generate
+		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.baseArrayLayer = 0;
+		blit.dstSubresource.layerCount = 1;
+		blit.dstSubresource.mipLevel = i;  // miplevel to generate
 
 		vkCmdBlitImage(cmdBuffer, 
 			           image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
@@ -900,7 +901,7 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 			           &blit,
 			           VK_FILTER_LINEAR);
 
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -913,12 +914,18 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 		if (mipWidth > 1)  mipWidth /= 2;
 		if (mipHeight > 1)  mipHeight /= 2;
 
-
 	}
 
+	barrier.subresourceRange.baseMipLevel = miplevels - 1;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-
-
+	vkCmdPipelineBarrier(cmdBuffer,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		0, 0, nullptr, 0, nullptr, 0, &barrier);
 
 	endSingleTimeCommands(cmdBuffer);
 }
@@ -1444,10 +1451,11 @@ void HelloTriangleApplication::createTextureImage()
 	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
 		copyBuffer2Image(stageBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	//transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	genMipmaps(image, VK_FORMAT_R8G8B8A8_UNORM, width, height, mipLevels);
 
 	vkDestroyBuffer(device, stageBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+	genMipmaps(image, VK_FORMAT_R8G8B8A8_UNORM, width, height, mipLevels);
 }
 
 void HelloTriangleApplication::createTextureImageView()
@@ -1476,7 +1484,7 @@ void HelloTriangleApplication::createTextureSampler()
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0;
 	samplerInfo.minLod = 0; // float why?
-	samplerInfo.maxLod = 0;
+	samplerInfo.maxLod = static_cast<float>(mipLevels);;
 
 	if (vkCreateSampler(device, &samplerInfo, nullptr, &defaultSampler) != VK_SUCCESS)
 	{
