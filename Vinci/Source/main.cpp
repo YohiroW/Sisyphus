@@ -270,7 +270,7 @@ public:
 
 	VkFormat isFormatSupport(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags feature);
 	VkFormat getPreferredDepthFormat();
-
+	void genMipmaps(VkImage image, VkFormat format, uint32_t width, uint32_t height, uint32_t miplevels);
 	void loadMesh();
 
 public:
@@ -840,6 +840,89 @@ VkFormat HelloTriangleApplication::getPreferredDepthFormat()
 	);
 }
 
+void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32_t width, uint32_t height, uint32_t miplevels)
+{
+	VkFormatProperties formatProperties;
+	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+
+	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+	{
+		throw std::runtime_error("texture format does not support linear tiling");
+	}
+
+	VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
+	VkImageMemoryBarrier barrier;
+	ZeroVkStructure(barrier, VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER);
+	barrier.image = image;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.layerCount = 1;
+
+	int32_t mipWidth = width;
+	int32_t mipHeight = height;
+	for (uint32_t i= 1; i< miplevels; ++i) // begin from 1
+	{
+		barrier.subresourceRange.baseMipLevel = i - 1;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+		vkCmdPipelineBarrier(cmdBuffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0, 0, nullptr, 0, nullptr, 0, &barrier);
+
+		VkImageBlit blit;	
+		blit.srcOffsets[0] = { 0, 0, 0 };
+		blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.baseArrayLayer = 0;
+		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.mipLevel = i- 1;
+
+		blit.dstOffsets[0] = { 0, 0, 0 };
+		blit.dstOffsets[1] = { mipWidth> 1? mipWidth/2: 1, 
+			                   mipHeight> 1? mipHeight/2: 1,
+			                   1 };
+		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.baseArrayLayer = 0;
+		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.mipLevel = i;  // miplevel to generate
+
+		vkCmdBlitImage(cmdBuffer, 
+			           image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+			           image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+			           1,
+			           &blit,
+			           VK_FILTER_LINEAR);
+
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		vkCmdPipelineBarrier(cmdBuffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			0, 0, nullptr, 0, nullptr, 0, &barrier);
+
+		if (mipWidth > 1)  mipWidth /= 2;
+		if (mipHeight > 1)  mipHeight /= 2;
+
+
+	}
+
+
+
+
+
+	endSingleTimeCommands(cmdBuffer);
+}
+
 void HelloTriangleApplication::loadMesh()
 {
 	tinyobj::attrib_t attribute;
@@ -1354,13 +1437,14 @@ void HelloTriangleApplication::createTextureImage()
 		mipLevels,
 		VK_FORMAT_R8G8B8A8_UNORM, 
 		VK_IMAGE_TILING_OPTIMAL, 
-		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		imageMemory,
 		image);
 
 	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
 		copyBuffer2Image(stageBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	//transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	genMipmaps(image, VK_FORMAT_R8G8B8A8_UNORM, width, height, mipLevels);
 
 	vkDestroyBuffer(device, stageBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
