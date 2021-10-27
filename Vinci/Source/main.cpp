@@ -868,6 +868,7 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 	}
 
 	VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
+
 	VkImageMemoryBarrier barrier;
 	ZeroVkStructure(barrier, VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER);
 	barrier.image = image;
@@ -1498,25 +1499,26 @@ void HelloTriangleApplication::createTextureImage()
 		width, 
 		height, 
 		mipLevels,
-		VK_FORMAT_R8G8B8A8_UNORM, 
+		VK_FORMAT_R8G8B8A8_SRGB,
 		VK_IMAGE_TILING_OPTIMAL, 
 		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		imageMemory,
 		image);
 
-	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
 		copyBuffer2Image(stageBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	//transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	//transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
 
 	vkDestroyBuffer(device, stageBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	genMipmaps(image, VK_FORMAT_R8G8B8A8_UNORM, width, height, mipLevels);
+	genMipmaps(image, VK_FORMAT_R8G8B8A8_SRGB, width, height, mipLevels);
 }
 
 void HelloTriangleApplication::createTextureImageView()
 {
-	imageView = createImageView(image, VK_FORMAT_R8G8B8A8_UNORM, mipLevels);
+	imageView = createImageView(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 
 
 
