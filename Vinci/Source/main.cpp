@@ -292,7 +292,7 @@ protected:
 	void createBuffer(VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperty, VkBuffer& buffer);
 	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
-	void createImage(uint32_t width, uint32_t height, uint32_t miplevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image, VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_4_BIT);
+	void createImage(uint32_t width, uint32_t height, uint32_t miplevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkDeviceMemory& memory, VkImage& image, VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT);
 	void copyBuffer2Image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 	VkCommandBuffer beginSingleTimeCommands();
@@ -672,7 +672,7 @@ private:
 	std::vector<VkDescriptorSet> descriptorSets;
 
 	// 4x msaa
-	VkSampleCountFlagBits msaaSamplePoints = VK_SAMPLE_COUNT_4_BIT;
+	VkSampleCountFlagBits msaaSamplePoints = VK_SAMPLE_COUNT_1_BIT;
 
 	// off-screen color buffer used for MSAA
 	VkImage colorImage;
@@ -1183,7 +1183,7 @@ void HelloTriangleApplication::createRenderPass()
 	VkAttachmentDescription resolvedColorAttachment = {};
 	resolvedColorAttachment.format = swapChainImageFormat;
 	resolvedColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	resolvedColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // clear with constants
+	resolvedColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	resolvedColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	resolvedColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	resolvedColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1430,7 +1430,7 @@ void HelloTriangleApplication::createFrameBuffers()
 
 	for (size_t i = 0; i< swapChainImageViews.size(); i++)
 	{
-		std::array<VkImageView, 3> attachments = { swapChainImageViews[i], depthImageView, colorImageView };
+		std::array<VkImageView, 3> attachments = { colorImageView, depthImageView, swapChainImageViews[i]  };
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1843,7 +1843,8 @@ void HelloTriangleApplication::createColorResource()
 				VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
 				colorImageMemory,
-				colorImage);
+				colorImage,
+		        msaaSamplePoints);
 
 	colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
