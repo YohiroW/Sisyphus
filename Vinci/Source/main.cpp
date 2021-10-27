@@ -1154,7 +1154,7 @@ void HelloTriangleApplication::createSwapChainImageView()
 		createInfo.subresourceRange.layerCount = 1;
 		createInfo.subresourceRange.levelCount = 1;
 
-		if (!vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) == VK_SUCCESS)
+		if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Failed to create swap chain image view.");
 		}
@@ -1506,7 +1506,7 @@ void HelloTriangleApplication::createTextureImage()
 
 	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
 		copyBuffer2Image(stageBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	//transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	vkDestroyBuffer(device, stageBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
