@@ -1166,22 +1166,38 @@ void HelloTriangleApplication::createRenderPass()
 	// Base color attachment
 	VkAttachmentDescription attachmentColor = {};
 	attachmentColor.format = swapChainImageFormat;
-	attachmentColor.samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentColor.samples = msaaSamplePoints;
 	attachmentColor.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;  // clear with constants
 	attachmentColor.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachmentColor.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachmentColor.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachmentColor.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentColor.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	//attachmentColor.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	attachmentColor.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference attachmentColorRef;
 	attachmentColorRef.attachment = 0;
 	attachmentColorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	// Off screen color attachment
+	VkAttachmentDescription resolvedColorAttachment = {};
+	resolvedColorAttachment.format = swapChainImageFormat;
+	resolvedColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	resolvedColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // clear with constants
+	resolvedColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	resolvedColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	resolvedColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	resolvedColorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	resolvedColorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference colorAttachmentResolveRef;
+	colorAttachmentResolveRef.attachment = 2;
+	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	// Depth attachment
 	VkAttachmentDescription depthAttachment = {};
 	depthAttachment.format = getPreferredDepthFormat();
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.samples = msaaSamplePoints;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;  // clear with constants
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -1198,6 +1214,7 @@ void HelloTriangleApplication::createRenderPass()
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &attachmentColorRef;
 	subpass.pDepthStencilAttachment = &depthAttachmentRef;  // only one depth/stencil attachement for each subpass 
+	subpass.pResolveAttachments = &colorAttachmentResolveRef;
 
 	VkSubpassDependency dependency = {};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -1207,7 +1224,7 @@ void HelloTriangleApplication::createRenderPass()
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	std::array<VkAttachmentDescription, 2> attachments = { attachmentColor, depthAttachment };
+	std::array<VkAttachmentDescription, 3> attachments = { attachmentColor, depthAttachment, resolvedColorAttachment };
 	VkRenderPassCreateInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -1320,7 +1337,7 @@ void HelloTriangleApplication::createGraphicsPipeline()
 	VkPipelineMultisampleStateCreateInfo multiSample = {};
 	multiSample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multiSample.sampleShadingEnable = VK_FALSE;
-	multiSample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multiSample.rasterizationSamples = msaaSamplePoints;
 	multiSample.minSampleShading = 1.0f;
 	multiSample.pSampleMask = nullptr;
 	multiSample.alphaToCoverageEnable = VK_FALSE;
@@ -1413,7 +1430,7 @@ void HelloTriangleApplication::createFrameBuffers()
 
 	for (size_t i = 0; i< swapChainImageViews.size(); i++)
 	{
-		std::array<VkImageView, 2> attachments = { swapChainImageViews[i], depthImageView };
+		std::array<VkImageView, 3> attachments = { swapChainImageViews[i], depthImageView, colorImageView };
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
