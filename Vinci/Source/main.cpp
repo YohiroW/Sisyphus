@@ -149,7 +149,7 @@ std::vector<uint32_t> DummyIndices = {
 /// Validation Layer should be abstracted, but leave it here for learning usage
 /// We can learn how to make validation configuration by vk_layer_settings.txt
 /// Currently use default setting in this solution. 
-const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation", "VK_LAYER_RENDERDOC_Capture"};
+const std::vector<const char*> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 
 bool checkValidationLayerSupport()
 {
@@ -893,7 +893,7 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 		vkCmdPipelineBarrier(cmdBuffer,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
-			0, 0, nullptr, 0, nullptr, 0, &barrier);
+			0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 		VkImageBlit blit;	
 		blit.srcOffsets[0] = { 0, 0, 0 };
@@ -927,7 +927,7 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 		vkCmdPipelineBarrier(cmdBuffer,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-			0, 0, nullptr, 0, nullptr, 0, &barrier);
+			0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 		if (mipWidth > 1)  mipWidth /= 2;
 		if (mipHeight > 1)  mipHeight /= 2;
@@ -943,7 +943,7 @@ void HelloTriangleApplication::genMipmaps(VkImage image, VkFormat format, uint32
 	vkCmdPipelineBarrier(cmdBuffer,
 		VK_PIPELINE_STAGE_TRANSFER_BIT,
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		0, 0, nullptr, 0, nullptr, 0, &barrier);
+		0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 	endSingleTimeCommands(cmdBuffer);
 }
@@ -1142,23 +1142,7 @@ void HelloTriangleApplication::createSwapChainImageView()
 
 	for (int i = 0; i < swapChainImageCount; ++i)
 	{
-		VkImageViewCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = swapChainImages[i];
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = swapChainImageFormat;
-		createInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
-		
-		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		createInfo.subresourceRange.baseArrayLayer = 0;
-		createInfo.subresourceRange.baseMipLevel = 0;
-		createInfo.subresourceRange.layerCount = 1;
-		createInfo.subresourceRange.levelCount = 1;
-
-		if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create swap chain image view.");
-		}
+		swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
 }
 
