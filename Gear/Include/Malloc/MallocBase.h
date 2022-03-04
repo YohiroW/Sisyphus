@@ -1,8 +1,11 @@
+#pragma once
+
+#include "Gear.h"
 #include <stddef.h>
 #include <atomic>
 
+BEGIN_NAMESPACE_GEAR
 
-//
 extern class FallocBase* GlobalMalloc;
 
 class MallocBase
@@ -15,3 +18,5 @@ public:
 	// 
 	
 };
+
+END_NAMESPACE
