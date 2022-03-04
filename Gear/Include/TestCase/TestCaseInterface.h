@@ -8,4 +8,4 @@ public:
     }
 
     virtual bool RunTest() = 0;
-}
+};

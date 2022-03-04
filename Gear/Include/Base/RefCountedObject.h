@@ -1,5 +1,4 @@
 #pragma once
-
 #include"Def.h"
 
 BEGIN_NAMESPACE_GEAR 
@@ -25,7 +24,7 @@ public:
     static void Shutdown();
     
     // Should be called from safe place where ref count not changed.
-    static voide Collect();
+    static void Collect();
 
 protected:
     void ReleaseResources();

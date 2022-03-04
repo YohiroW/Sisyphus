@@ -1,2 +1,5 @@
 #pragma once
-#include "Def.h"
+#include "Base/Def.h"
+#include "Base/Types.h"
+#include "TestCase/TestCaseInterface.h"
+
