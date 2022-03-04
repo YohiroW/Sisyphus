@@ -24,19 +24,21 @@ include_directories("Include")
 
 # source files
 set(srcs
-# includes
+    Include/Gear.h
+    
     Include/Base/Def.h
     Include/Base/RefCountedObject.h
+
     Include/Malloc/MallocBase.h
     Include/Benchmark/Benchmark.h
-# sources
     Source/Benchmark/Benchmark.cpp
-	Source/main.cpp
-# test cases
-    Include/TestCase/TestCastInterface.h
+	
+    Include/TestCase/TestCaseInterface.h
     Source/TestCase/TestCaseAllocation.hpp
     Source/TestCase/TestCasePerfStress.hpp
     Source/TestCase/TestCaseReflection.hpp 
+    
+    Source/main.cpp
     )
 
 add_executable(Gear "${srcs}")
