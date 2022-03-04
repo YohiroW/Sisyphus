@@ -31,7 +31,10 @@ include_directories("Include")
 
 # source files
 set(srcs
-    Include/MallocBase.h
+    Include/Base/Def.h
+    Include/Base/RefCountedObject.h
+    Include/Malloc/MallocBase.h
+    
 	Source/main.cpp)
 
 add_executable(Gear "${srcs}")
