@@ -27,8 +27,11 @@ set(srcs
     Include/Gear.h    
     Include/Base/Defs.h
     Include/Base/Types.h
-    Include/Base/Log/Log.h
+    Include/Base/Misc.h   
+    Include/Base/Log.h
     Include/Base/RefCountedObject.h
+    Source/Base/Misc.cpp
+    Source/Base/Log.cpp
 
     Include/Malloc/MallocBase.h
     Include/Benchmark/Benchmark.h
