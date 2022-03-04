@@ -25,8 +25,9 @@ include_directories("Include")
 # source files
 set(srcs
     Include/Gear.h    
-    Include/Base/Def.h
+    Include/Base/Defs.h
     Include/Base/Types.h
+    Include/Base/Log/Log.h
     Include/Base/RefCountedObject.h
 
     Include/Malloc/MallocBase.h
