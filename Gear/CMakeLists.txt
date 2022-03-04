@@ -34,7 +34,9 @@ set(srcs
     Include/Base/Def.h
     Include/Base/RefCountedObject.h
     Include/Malloc/MallocBase.h
-    
+    Include/Benchmark/Benchmark.h
+
+    Source/Benchmark/Benchmark.cpp
 	Source/main.cpp)
 
 add_executable(Gear "${srcs}")
