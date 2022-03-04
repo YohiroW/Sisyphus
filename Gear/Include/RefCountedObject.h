@@ -1,6 +1,6 @@
 #pragma once
-#define BEGIN_NAMESPACE_GEAR namespace Gear {
-#define END_NAMESPACE  }
+
+#include"Def.h"
 
 BEGIN_NAMESPACE_GEAR 
 
