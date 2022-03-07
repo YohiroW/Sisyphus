@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Gear.h"
+#include "Base/Types.h"
 
 BEGIN_NAMESPACE_GEAR
 
