@@ -24,10 +24,10 @@ include_directories("Include")
 
 # source files
 set(srcs
-    Include/Gear.h    
+    Include/Gear.h
     Include/Base/Defs.h
     Include/Base/Types.h
-    Include/Base/Misc.h   
+    Include/Base/Misc.h
     Include/Base/Log.h
     Include/Base/RefCountedObject.h
     Source/Base/Misc.cpp
@@ -37,6 +37,7 @@ set(srcs
     Include/Benchmark/Benchmark.h
     Source/Benchmark/Benchmark.cpp
 	
+    Include/TestCase/TestCase.h
     Include/TestCase/TestCaseInterface.h
     Source/TestCase/TestCaseAllocation.hpp
     Source/TestCase/TestCasePerfStress.hpp
