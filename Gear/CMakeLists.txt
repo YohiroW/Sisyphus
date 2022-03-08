@@ -29,9 +29,16 @@ set(srcs
     Include/Base/Types.h
     Include/Base/Misc.h
     Include/Base/Log.h
+    Include/Base/Singleton.h
+    Include/Base/Object.h
+    Include/Base/Archive.h
+    Include/Base/Timer.h     
     Include/Base/RefCountedObject.h
+    Include/Base/Command.hpp
     Source/Base/Misc.cpp
     Source/Base/Log.cpp
+    Source/Base/Object.cpp
+    Source/Base/Timer.cpp
 
     Include/Malloc/MallocBase.h
     Include/Benchmark/Benchmark.h
