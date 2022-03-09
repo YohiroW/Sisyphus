@@ -7,11 +7,11 @@
 BEGIN_NAMESPACE_GEAR
 
 #define RUN_TESTCASE_SIMPLE(_testCaseClass, _testCaseName)      \
-    _testCaseClass _test_case_##testCaseName(#_testCaseName);   \
+    _testCaseClass _test_case_##_testCaseName(#_testCaseName);   \
     _test_case_##_testCaseName.RunTest();
 
 #define RUN_TESTCASE_CONDITIONAL(_testCaseClass, _testCaseName) \
-    _testCaseClass _test_case_##testCaseName(#_testCaseName);   \
+    _testCaseClass _test_case_##_testCaseName(#_testCaseName);   \
     if(!_test_case_##_testCaseName.RunTest()) {                 \
         LOG_ERR(Debug,"Test case FAILED to Run!");              \
     }
