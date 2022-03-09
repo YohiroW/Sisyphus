@@ -13,6 +13,6 @@ protected:
 
 private:
 
-}
+};
 
 END_NAMESPACE

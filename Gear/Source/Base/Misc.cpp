@@ -7,30 +7,30 @@ void ApplicationMisc::OutputString(const Char* str)
 	PrintMessage(str);
 }
 
-//void ApplicationMisc::OutputString(const WChar* str)
-//{
-//    PrintMessage(str);
-//}
-//
-//void ApplicationMisc::OutputString(const StdString& str)
-//{
-//	PrintMessage(str);
-//}
+void ApplicationMisc::OutputString(const WChar* str)
+{
+	PrintMessage(str);
+}
+
+void ApplicationMisc::OutputString(const StdString& str)
+{
+	PrintMessage(str);
+}
 
 void ApplicationMisc::PrintMessage(const Char* msg)
 {
     printf("%s", msg);
 }
 
-//void ApplicationMisc::PrintMessage(const WChar* msg)
-//{
-//    printf("%ls",msg);
-//}
-//
-//void ApplicationMisc::PrintMessage(const StdString& msg)
-//{ 
-//    PrintMessage(msg.c_str());
-//}
+void ApplicationMisc::PrintMessage(const WChar* msg)
+{
+	printf("%ls", msg);
+}
+
+void ApplicationMisc::PrintMessage(const StdString& msg)
+{
+	PrintMessage(msg.c_str());
+}
 
 void ApplicationMisc::PrintErrorMessage(const Char* err)
 {

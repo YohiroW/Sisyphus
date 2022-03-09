@@ -1,24 +1,31 @@
 #pragma once
 
+#include "Base/Log.h"
 #include "Base/Misc.h"
-#include "TestCaseInterface.h"
+#include "TestCase/TestCaseInterface.h"
 
 BEGIN_NAMESPACE_GEAR
 
-#if 1
-#define RUN_TESTCASE_SIMPLE( TestCaseClass, TestCaseName ) \
-    TestCaseClass* _test_case_##TestCaseName = new TestCaseClass(#TestCaseName); \
-    _test_case_##TestCaseName->RunTest(); \
-	delete _test_case_##TestCaseName; \
-    _test_case_##TestCaseName = nullptr;
+#define RUN_TESTCASE_SIMPLE(_testCaseClass, _testCaseName)      \
+    _testCaseClass _test_case_##testCaseName(#_testCaseName);   \
+    _test_case_##_testCaseName.RunTest();
 
-#define RUN_TESTCASE_CONDITIONAL( TestCaseClass, TestCaseName ) \
-    TestCaseClass* _test_case_##TestCaseName = new TestCaseClass(#TestCaseName); \
-    if(!_test_case_##TestCaseName->RunTest()) \
-    {  }\
-    delete _test_case_##TestCaseName; \
-    _test_case_##TestCaseName = nullptr;
-#endif
+#define RUN_TESTCASE_CONDITIONAL(_testCaseClass, _testCaseName) \
+    _testCaseClass _test_case_##testCaseName(#_testCaseName);   \
+    if(!_test_case_##_testCaseName.RunTest()) {                 \
+        LOG_ERR(Debug,"Test case FAILED to Run!");              \
+    }
+
+#define DECLARE_AND_IMPLEMENT_TESTCASE(_name)     \
+    class _name : public TestCase                 \
+    {                                             \
+    public:                                       \
+	    _name(const StdString& InTestCaseName) :  \
+		    TestCase(InTestCaseName){}            \
+        ~_name() {};                              \
+        virtual bool RunTest() override;          \
+    };                                            \
+    bool _name::RunTest()
 
 class TestCase: public ITestCaseInterface
 {
@@ -30,7 +37,7 @@ public:
     {
     }
 
-    ~TestCase() {};
+    ~TestCase() override {};
 
     virtual bool RunTest() override
     {
@@ -41,23 +48,19 @@ private:
     StdString Name;
 };
 
-class TestCaseDebug : public TestCase
+DECLARE_AND_IMPLEMENT_TESTCASE(TestCaseDebug)
 {
-public:
-    TestCaseDebug(const StdString& InTestCaseName) :
-        TestCase(InTestCaseName)
-    {
-    }
+	ApplicationMisc::PrintMessage("TEST");
 
-    ~TestCaseDebug() {};
+	return true;
+}
 
-    virtual bool RunTest() override
-	{
-        ApplicationMisc::PrintMessage("TEST");
-
-        return true;
-    }
-};
+DECLARE_AND_IMPLEMENT_TESTCASE(TestCaseLogOutput)
+{
+    LOG(Debug, "Test log feature.");
+	
+    return true;
+}
 
 END_NAMESPACE
 

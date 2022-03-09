@@ -4,8 +4,6 @@
 
 #include <string>
 
-BEGIN_NAMESPACE_GEAR
-
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
@@ -19,8 +17,3 @@ typedef int64_t int64;
 typedef char Char;
 typedef wchar_t WChar;
 typedef std::string StdString;
-
-
-
-
-END_NAMESPACE

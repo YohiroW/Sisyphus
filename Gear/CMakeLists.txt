@@ -32,7 +32,7 @@ set(srcs
     Include/Base/Singleton.h
     Include/Base/Object.h
     Include/Base/Archive.h
-    Include/Base/Timer.h     
+    Include/Base/Timer.h
     Include/Base/RefCountedObject.h
     Include/Base/Command.hpp
     Source/Base/Misc.cpp
