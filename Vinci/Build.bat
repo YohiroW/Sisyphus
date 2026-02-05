@@ -1,9 +1,10 @@
 @echo off
 
-set GENERATOR="Visual Studio 16 2019"
+set GENERATOR="Visual Studio 17 2022"
 
-mkdir Build
+if not exist "Build" mkdir Build
 cd Build
+
 cmake -G %GENERATOR% ..
 
 pause
